@@ -1,0 +1,66 @@
+/*
+ * Design-Tokens, übernommen aus der Design-Vorlage "Remote Desktop App.html":
+ * dunkles UI, Akzentfarbe Teal/Mint (#3ecfb2), Karten mit abgerundeten Ecken
+ * (14px) auf leicht hellerem Grau (#1e232c) vor sehr dunklem Hintergrund
+ * (#12151b / #050709), monospaced ID-Anzeige (SF Mono), dezente Sidebar mit
+ * "Ampel"-Fensterknöpfen.
+ */
+:root {
+  --bg-app: #05070a;
+  --bg-panel: #12151b;
+  --bg-sidebar: #171b22;
+  --bg-card: #1e232c;
+  --bg-card-hover: #242a35;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: #eef1f5;
+  --text-secondary: #5f6b7d;
+  --text-tertiary: #8891a0;
+  --accent: #3ecfb2;
+  --accent-contrast: #0b1210;
+  --accent-soft: rgba(62, 207, 178, 0.14);
+  --accent-soft-strong: rgba(62, 207, 178, 0.12);
+  --danger: #ff5f57;
+  --warning: #febc2e;
+  --success: #28c840;
+  --success-2: #4ade80;
+  --radius-lg: 14px;
+  --radius-md: 9px;
+  --radius-sm: 6px;
+  --font-ui: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}

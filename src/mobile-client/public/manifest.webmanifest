@@ -1,0 +1,25 @@
+{
+  "name": "mydesk Mobile",
+  "short_name": "mydesk",
+  "description": "Mac oder Windows vom iPad, iPhone oder Android-Phone aus fernsteuern",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05070a",
+  "theme_color": "#05070a",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
