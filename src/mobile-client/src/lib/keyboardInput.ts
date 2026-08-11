@@ -96,6 +96,40 @@ export function buildCharEvents(char: string, modifiers: ModifierState): RemoteI
   return buildKeyEvents(char, codeForChar(char), modifiers);
 }
 
+/** Die für uns relevanten Felder eines `KeyboardEvent`. */
+export interface BrowserKeyEvent {
+  key: string;
+  code: string;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+}
+
+/**
+ * Übersetzt ein echtes Tastatur-Ereignis des Browsers in ein Eingabe-Event.
+ *
+ * Wird nur am Rechner (physische Tastatur) gebraucht: Dort liefert der Browser
+ * echte key-down/key-up-Paare, sodass Halten und Wiederholen von Tasten sowie
+ * Kombinationen wie Cmd+C ohne Sticky-Modifier funktionieren.
+ */
+export function keyEventFromBrowser(
+  type: "key-down" | "key-up",
+  evt: BrowserKeyEvent,
+): RemoteInputEvent {
+  return {
+    type,
+    key: evt.key,
+    // Fehlt der code (manche Layouts/Browser bei Sondertasten), ist der key
+    // die beste verfügbare Beschreibung der physischen Taste.
+    code: evt.code || evt.key,
+    ctrlKey: evt.ctrlKey,
+    shiftKey: evt.shiftKey,
+    altKey: evt.altKey,
+    metaKey: evt.metaKey,
+  };
+}
+
 /** Beschriftung eines Modifiers, plattformabhängig (macOS vs. Windows). */
 export function modifierLabel(mod: ModifierKey, hostIsMac: boolean): string {
   switch (mod) {

@@ -2,9 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RemoteInputEvent } from "@shared/types";
 import { ControllerSession } from "@renderer/lib/controllerSession";
 import { TouchInputController, type TouchPoint } from "../lib/touchInput";
+import { MouseInputController } from "../lib/mouseInput";
 import { IDENTITY_VIEWPORT, normToPoint, type Viewport } from "../lib/viewport";
 import { KeyboardBar } from "./KeyboardBar";
-import { NO_MODIFIERS, type ModifierKey, type ModifierState } from "../lib/keyboardInput";
+import {
+  NO_MODIFIERS,
+  keyEventFromBrowser,
+  type ModifierKey,
+  type ModifierState,
+} from "../lib/keyboardInput";
 import type { MobileSettings } from "../hooks/useMobileSettings";
 import type { DeviceInfo } from "../hooks/useDeviceClass";
 import type { MobileTexts } from "../i18n";
@@ -89,6 +95,10 @@ export function RemoteScreen({
     [sendInput],
   );
 
+  // Maus-Steuerung für den Desktop-Browser. Eigene, schlanke Engine ohne
+  // Gestenerkennung: Die echte Mausposition wird direkt abgebildet.
+  const mouse = useMemo(() => new MouseInputController({ onInput: sendInput }), [sendInput]);
+
   useEffect(() => {
     touch.setConfig(settings);
   }, [touch, settings]);
@@ -146,12 +156,13 @@ export function RemoteScreen({
       const size = { width: rect.width, height: rect.height };
       setContainerSize(size);
       touch.setContainer(size);
+      mouse.setContainer(size);
     }
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [touch]);
+  }, [touch, mouse]);
 
   // --- Statusinfos (Auflösung/Latenz) -------------------------------------
   useEffect(() => {
@@ -163,6 +174,7 @@ export function RemoteScreen({
         const aspect = video.videoWidth / video.videoHeight;
         setVideoAspect(aspect);
         touch.setVideoAspect(aspect);
+        mouse.setVideoAspect(aspect);
       }
       const pc = sessionRef.current?.peerConnection;
       pc?.getStats().then((stats) => {
@@ -178,11 +190,12 @@ export function RemoteScreen({
       });
     }, 2000);
     return () => window.clearInterval(interval);
-  }, [state, touch]);
+  }, [state, touch, mouse]);
 
   useEffect(() => {
     touch.setViewport(viewport);
-  }, [touch, viewport]);
+    mouse.setViewport(viewport);
+  }, [touch, mouse, viewport]);
 
   // --- Touch-Handler ------------------------------------------------------
   // Bewusst als native Listener mit { passive: false }: React-Handler sind in
@@ -222,6 +235,89 @@ export function RemoteScreen({
       el.removeEventListener("touchcancel", onCancel);
     };
   }, [touch]);
+
+  // --- Maus-Handler (Desktop-Browser) ------------------------------------
+  // Nur auf Nicht-Touch-Geräten aktiv: Auf Touch-Geräten erzeugt der Browser
+  // zusätzlich zu den Touch-Events emulierte Maus-Events — beide Engines
+  // gleichzeitig würden den Zeiger doppelt bewegen.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || device.isTouch || state !== "connected") return;
+
+    function point(e: MouseEvent): { x: number; y: number } {
+      const rect = el!.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    function onMouseMove(e: MouseEvent): void {
+      mouse.onMove(point(e));
+    }
+    function onMouseDown(e: MouseEvent): void {
+      e.preventDefault();
+      el!.focus();
+      mouse.onDown(point(e), e.button);
+    }
+    function onMouseUp(e: MouseEvent): void {
+      e.preventDefault();
+      mouse.onUp(point(e), e.button);
+    }
+    function onWheel(e: WheelEvent): void {
+      e.preventDefault();
+      mouse.onWheel({ deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode });
+    }
+    // Ohne das wäre die rechte Maustaste nicht nutzbar: Der Browser würde
+    // stattdessen sein eigenes Kontextmenü öffnen.
+    function onContextMenu(e: Event): void {
+      e.preventDefault();
+    }
+
+    el.addEventListener("mousemove", onMouseMove);
+    el.addEventListener("mousedown", onMouseDown);
+    // mouseup am Fenster, damit ein außerhalb des Bildes losgelassener Knopf
+    // nicht "hängen" bleibt (der Host hielte die Taste sonst gedrückt).
+    window.addEventListener("mouseup", onMouseUp);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("contextmenu", onContextMenu);
+    return () => {
+      el.removeEventListener("mousemove", onMouseMove);
+      el.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [mouse, device.isTouch, state]);
+
+  // --- Physische Tastatur (Desktop-Browser) -------------------------------
+  // Am Fenster registriert, damit auch ohne Klick ins Bild getippt werden kann.
+  // Die Bildschirmtastatur-Leiste (KeyboardBar) hat Vorrang: Ist sie offen,
+  // liefert bereits ihr Eingabefeld die Events.
+  useEffect(() => {
+    if (device.isTouch || keyboardVisible || state !== "connected") return;
+
+    function isEditable(target: EventTarget | null): boolean {
+      const el = target as HTMLElement | null;
+      return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+    }
+    function onKeyDown(e: KeyboardEvent): void {
+      // Eingaben in eigene Felder (z.B. Servereinstellung) nicht abfangen.
+      if (isEditable(e.target)) return;
+      // Escape bleibt lokal: sonst gäbe es keinen Weg mehr aus dem Vollbild.
+      if (e.key === "Escape" && document.fullscreenElement) return;
+      e.preventDefault();
+      sendInput(keyEventFromBrowser("key-down", e));
+    }
+    function onKeyUp(e: KeyboardEvent): void {
+      if (isEditable(e.target)) return;
+      e.preventDefault();
+      sendInput(keyEventFromBrowser("key-up", e));
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [sendInput, device.isTouch, keyboardVisible, state]);
 
   function toggleModifier(mod: ModifierKey): void {
     setModifiers((prev) => ({ ...prev, [mod]: !prev[mod] }));
@@ -268,7 +364,9 @@ export function RemoteScreen({
         </button>
       </header>
 
-      <div className="remote-stage" ref={stageRef}>
+      {/* tabIndex: macht die Bühne fokussierbar, damit ein Klick ins Bild den
+          Fokus aus etwaigen Eingabefeldern holt. */}
+      <div className="remote-stage" ref={stageRef} tabIndex={-1}>
         <video
           ref={videoRef}
           className="remote-video"
@@ -284,6 +382,7 @@ export function RemoteScreen({
               const aspect = v.videoWidth / v.videoHeight;
               setVideoAspect(aspect);
               touch.setVideoAspect(aspect);
+              mouse.setVideoAspect(aspect);
             }
           }}
         />
@@ -299,7 +398,9 @@ export function RemoteScreen({
           </div>
         )}
 
-        {state === "connected" && (
+        {/* Der virtuelle Zeiger ergibt nur per Finger Sinn — mit echter Maus
+            steht der Systemcursor bereits an der richtigen Stelle. */}
+        {state === "connected" && device.isTouch && (
           <div
             className={`virtual-cursor ${dragging ? "dragging" : ""}`}
             style={{ transform: `translate(${cursorPoint.x}px, ${cursorPoint.y}px)` }}
