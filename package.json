@@ -1,0 +1,46 @@
+{
+  "name": "myremote",
+  "productName": "mydesk",
+  "version": "0.1.0",
+  "description": "Cross-platform Remote-Desktop MVP (Electron + React + TypeScript + WebRTC)",
+  "private": true,
+  "main": "out/main/index.js",
+  "author": "mydesk",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:win": "electron-vite build && electron-builder --win",
+    "preview": "electron-vite preview",
+    "signaling": "node src/signaling-server/server.js",
+    "dev:mobile": "vite --config src/mobile-client/vite.config.ts",
+    "build:mobile": "vite build --config src/mobile-client/vite.config.ts",
+    "preview:mobile": "vite preview --config src/mobile-client/vite.config.ts",
+    "serve:mobile": "npm run build:mobile && npm run signaling",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p src/mobile-client/tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.5.10",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.5",
+    "vitest": "^2.1.9"
+  }
+}

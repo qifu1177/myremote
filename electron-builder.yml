@@ -1,0 +1,42 @@
+appId: com.mydesk.app
+productName: mydesk
+directories:
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+extraResources:
+  # icon.png wird im ungepackten Fenster-Icon (BrowserWindow "icon"-Option,
+  # siehe src/main/index.ts resolveIconPath()) zur Laufzeit referenziert.
+  - from: build/icon.png
+    to: icon.png
+asarUnpack:
+  - "**/*.node"
+mac:
+  category: public.app-category.utilities
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  # macOS erfordert Berechtigungen für Bildschirmaufnahme (NSScreenCaptureUsageDescription)
+  # und Bedienungshilfen (Accessibility); letztere kann nicht per Info.plist automatisch
+  # erteilt werden, der Nutzer muss sie manuell in den Systemeinstellungen freigeben.
+  extendInfo:
+    NSScreenCaptureUsageDescription: >
+      mydesk benötigt Zugriff auf die Bildschirmaufnahme, um deinen Bildschirm für
+      Fernsteuerungs-Sitzungen freizugeben.
+    CFBundleName: mydesk
+    CFBundleDisplayName: mydesk
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+linux:
+  icon: build/icon.png
+  target:
+    - AppImage
+  category: Utility
