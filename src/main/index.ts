@@ -1,10 +1,26 @@
-import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, systemPreferences } from "electron";
+import {
+  app,
+  BrowserWindow,
+  desktopCapturer,
+  ipcMain,
+  nativeImage,
+  screen,
+  shell,
+  systemPreferences,
+} from "electron";
 import { join } from "path";
 import { is } from "./is";
 import { generateHostId, generateHostPassword } from "./id";
-import { applyRemoteInputEvent } from "./input-simulation";
+import { applyRemoteInputEvent, setInputDisplayId } from "./input-simulation";
 import { detectLanAddress } from "./lan-address";
-import { IPC_CHANNELS, type AppInfo, type DesktopSource, type RemoteInputEvent } from "@shared/types";
+import {
+  IPC_CHANNELS,
+  type AppInfo,
+  type DesktopSource,
+  type PermissionStatus,
+  type PrivacyPane,
+  type RemoteInputEvent,
+} from "@shared/types";
 
 // App-Name explizit setzen: Im gepackten Build liefert electron-builder
 // (productName in electron-builder.yml) bereits "mydesk" über CFBundleName/
@@ -103,33 +119,65 @@ function registerIpcHandlers(): void {
       types: ["screen"],
       thumbnailSize: { width: 300, height: 180 },
     });
-    return sources.map((s) => ({
-      id: s.id,
-      name: s.name,
-      thumbnailDataUrl: s.thumbnail.toDataURL(),
-    }));
+    const displays = screen.getAllDisplays();
+    return sources.map((s) => {
+      // `display_id` ist die zuverlässige Zuordnung Quelle -> Bildschirm.
+      // Fällt sie aus (kommt auf manchen Plattformen/Versionen vor), steckt
+      // sie meist noch in der Quell-ID ("screen:<display_id>:0").
+      const displayId = s.display_id || s.id.split(":")[1] || null;
+      const display = displays.find((d) => String(d.id) === displayId) ?? null;
+      return {
+        id: s.id,
+        name: s.name,
+        thumbnailDataUrl: s.thumbnail.toDataURL(),
+        displayId,
+        size: display ? { width: display.size.width, height: display.size.height } : null,
+      };
+    });
   });
 
-  ipcMain.handle(IPC_CHANNELS.checkAccessibilityPermission, (): boolean => {
-    if (process.platform !== "darwin") return true;
+  ipcMain.handle(IPC_CHANNELS.getPermissions, (): PermissionStatus => {
+    if (process.platform !== "darwin") return { accessibility: true, screen: "granted" };
+    let accessibility = false;
     try {
-      return systemPreferences.isTrustedAccessibilityClient(false);
+      accessibility = systemPreferences.isTrustedAccessibilityClient(false);
     } catch {
-      return false;
+      accessibility = false;
     }
+    let screenStatus: PermissionStatus["screen"] = "unknown";
+    try {
+      screenStatus = systemPreferences.getMediaAccessStatus("screen") as PermissionStatus["screen"];
+    } catch {
+      screenStatus = "unknown";
+    }
+    return { accessibility, screen: screenStatus };
   });
 
-  ipcMain.handle(IPC_CHANNELS.requestScreenPermission, (): string => {
-    if (process.platform !== "darwin") return "granted";
-    try {
-      return systemPreferences.getMediaAccessStatus("screen");
-    } catch {
-      return "unknown";
+  ipcMain.handle(IPC_CHANNELS.openPrivacySettings, async (_event, pane: PrivacyPane): Promise<void> => {
+    if (process.platform !== "darwin") return;
+    // Öffnet direkt den passenden Bereich in "Datenschutz & Sicherheit".
+    // Zusätzlich lösen wir für die Bedienungshilfen den System-Dialog aus
+    // (prompt = true), damit die App überhaupt in der Liste auftaucht.
+    if (pane === "accessibility") {
+      try {
+        systemPreferences.isTrustedAccessibilityClient(true);
+      } catch {
+        /* Dialog nicht verfügbar: Nutzer öffnet die Einstellungen manuell */
+      }
     }
+    const anchor =
+      pane === "accessibility"
+        ? "Privacy_Accessibility"
+        : "Privacy_ScreenCapture";
+    await shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${anchor}`);
   });
 
   ipcMain.on(IPC_CHANNELS.simulateInput, (_event, evt: RemoteInputEvent) => {
     void applyRemoteInputEvent(evt);
+  });
+
+  ipcMain.on(IPC_CHANNELS.setInputDisplay, (_event, displayId: string | null) => {
+    setInputDisplayId(displayId);
   });
 
   ipcMain.handle(IPC_CHANNELS.regenerateHostPassword, (): string => {

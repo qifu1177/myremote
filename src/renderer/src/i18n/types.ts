@@ -18,6 +18,10 @@ export interface Translations {
     regeneratePassword: string;
     copyPassword: string;
     accessibilityHint: string;
+    screenPermissionHint: string;
+    screenPermissionRequired: string;
+    openSystemSettings: string;
+    recheckPermission: string;
     shareScreen: string;
     stopSharing: string;
     chooseScreen: string;

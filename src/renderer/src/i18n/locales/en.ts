@@ -15,7 +15,13 @@ export const en: Translations = {
     regeneratePassword: "Generate new password",
     copyPassword: "Copy password",
     accessibilityHint:
-      "Note: Accessibility permission is missing. Remote control (mouse/keyboard) will only work once it has been granted in System Settings → Privacy & Security → Accessibility.",
+      "Accessibility permission is missing. Remote control (mouse/keyboard) will only work once it has been granted in System Settings → Privacy & Security → Accessibility and the app has been restarted.",
+    screenPermissionHint:
+      "Screen Recording permission is missing. Without it macOS only sends a placeholder image — the other side sees the wrong screen content.",
+    screenPermissionRequired:
+      "Cannot share the screen: the “Screen Recording” permission is missing. Please grant it in System Settings and restart the app.",
+    openSystemSettings: "Open System Settings",
+    recheckPermission: "Check again",
     shareScreen: "Share screen",
     stopSharing: "Stop sharing",
     chooseScreen: "Choose a screen",

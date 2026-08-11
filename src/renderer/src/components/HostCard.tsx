@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AppInfo, DesktopSource } from "@shared/types";
+import type { AppInfo, DesktopSource, PermissionStatus } from "@shared/types";
 import { HostSession } from "../lib/hostSession";
 import { captureDesktopStream } from "../lib/screenCapture";
+import { missingPermissions } from "../lib/permissions";
 import { StatusBadge } from "./StatusBadge";
 import { useTranslation } from "../i18n";
 import type { AppSettings } from "../hooks/useAppSettings";
@@ -23,7 +24,7 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
   const [pickerOpen, setPickerOpen] = useState(false);
   const [connectedPeers, setConnectedPeers] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [accessibilityOk, setAccessibilityOk] = useState<boolean | null>(null);
+  const [permissions, setPermissions] = useState<PermissionStatus | null>(null);
   const [password, setPassword] = useState<string | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,9 +74,23 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
     }
   }
 
-  useEffect(() => {
-    window.myremote.checkAccessibilityPermission().then(setAccessibilityOk);
+  const refreshPermissions = useCallback(async (): Promise<PermissionStatus> => {
+    const status = await window.myremote.getPermissions();
+    setPermissions(status);
+    return status;
   }, []);
+
+  // Berechtigungen werden im System erteilt, während die App im Hintergrund
+  // ist. Deshalb bei jeder Rückkehr ins Fenster erneut prüfen — sonst zeigt
+  // die Karte dauerhaft den alten (fehlenden) Stand an.
+  useEffect(() => {
+    void refreshPermissions();
+    const onFocus = (): void => {
+      void refreshPermissions();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshPermissions]);
 
   const stopSharing = useCallback(() => {
     sessionRef.current?.stop();
@@ -89,16 +104,26 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
 
   async function openPicker(): Promise<void> {
     setError(null);
+    // Vor dem Auflisten prüfen: Ohne Bildschirmaufnahme-Recht liefert macOS
+    // für alle Bildschirme nur Ersatz-Thumbnails, die Auswahl wäre blind.
+    const status = await refreshPermissions();
+    if (status.screen !== "granted") {
+      setError(t.hostCard.screenPermissionRequired);
+      return;
+    }
     const list = await window.myremote.getDesktopSources();
     setSources(list);
     setPickerOpen(true);
   }
 
-  async function startSharing(sourceId: string): Promise<void> {
+  async function startSharing(source: DesktopSource): Promise<void> {
     if (!appInfo) return;
     setPickerOpen(false);
     try {
-      const stream = await captureDesktopStream(sourceId, displaySettings.quality);
+      const stream = await captureDesktopStream(source.id, displaySettings.quality);
+      // Eingaben müssen auf genau diesem Bildschirm landen, nicht auf dem
+      // primären — sonst steuert man bei mehreren Monitoren ins Leere.
+      window.myremote.setInputDisplay(source.displayId);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => {});
@@ -176,7 +201,26 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
         </div>
       </div>
 
-      {accessibilityOk === false && <div className="error-text">{t.hostCard.accessibilityHint}</div>}
+      {permissions &&
+        missingPermissions(permissions).map((kind) => (
+          <div key={kind} className="permission-warning">
+            <div className="error-text">
+              {kind === "screen" ? t.hostCard.screenPermissionHint : t.hostCard.accessibilityHint}
+            </div>
+            <div className="permission-actions">
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => void window.myremote.openPrivacySettings(kind)}
+              >
+                {t.hostCard.openSystemSettings}
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => void refreshPermissions()}>
+                {t.hostCard.recheckPermission}
+              </button>
+            </div>
+          </div>
+        ))}
 
       {!sharing ? (
         <button className="btn btn-primary btn-block" style={{ marginTop: 18 }} onClick={openPicker}>
@@ -199,10 +243,15 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
                 key={s.id}
                 className="btn btn-secondary"
                 style={{ padding: 6, display: "flex", flexDirection: "column", gap: 6 }}
-                onClick={() => startSharing(s.id)}
+                onClick={() => startSharing(s)}
               >
                 <img src={s.thumbnailDataUrl} alt={s.name} width={140} style={{ borderRadius: 4 }} />
-                <span style={{ fontSize: 11 }}>{s.name}</span>
+                <span style={{ fontSize: 11 }}>
+                  {s.name}
+                  {/* Auflösung mit anzeigen: Mehrere Monitore heißen oft
+                      identisch ("Bildschirm 1"/"Entire Screen"). */}
+                  {s.size ? ` · ${s.size.width}×${s.size.height}` : ""}
+                </span>
               </button>
             ))}
           </div>

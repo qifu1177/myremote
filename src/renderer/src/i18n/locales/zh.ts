@@ -15,7 +15,13 @@ export const zh: Translations = {
     regeneratePassword: "生成新密码",
     copyPassword: "复制密码",
     accessibilityHint:
-      "提示：缺少辅助功能权限。需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权后，远程控制（鼠标/键盘）才能正常工作。",
+      "缺少辅助功能权限。需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权并重启应用后，远程控制（鼠标/键盘）才能正常工作。",
+    screenPermissionHint:
+      "缺少屏幕录制权限。没有该权限时 macOS 只会发送替代画面——对方看到的将是错误的屏幕内容。",
+    screenPermissionRequired:
+      "无法共享屏幕：缺少「屏幕录制」权限。请在系统设置中授权后重启应用。",
+    openSystemSettings: "打开系统设置",
+    recheckPermission: "重新检查",
     shareScreen: "共享屏幕",
     stopSharing: "停止共享",
     chooseScreen: "选择屏幕",

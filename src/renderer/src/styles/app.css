@@ -398,6 +398,27 @@ body[data-platform="darwin"] .sidebar {
   margin-top: 10px;
 }
 
+/* Hinweis auf eine fehlende macOS-Berechtigung inkl. Aktionen, um sie zu
+   erteilen bzw. den Status erneut zu prüfen. */
+.permission-warning {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  background: rgba(255, 92, 92, 0.08);
+}
+
+.permission-warning .error-text {
+  margin-top: 0;
+}
+
+.permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .section-title {
   font-size: 13px;
   font-weight: 700;

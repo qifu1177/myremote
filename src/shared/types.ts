@@ -122,7 +122,31 @@ export interface DesktopSource {
   id: string;
   name: string;
   thumbnailDataUrl: string;
+  /**
+   * Electron-Display-ID des Bildschirms hinter dieser Quelle (als String, da
+   * desktopCapturer sie so liefert), oder null wenn nicht zuordenbar. Wird
+   * gebraucht, damit Eingaben auf genau dem freigegebenen Bildschirm landen
+   * (Multi-Monitor) — nicht immer auf dem primären.
+   */
+  displayId: string | null;
+  /** Auflösung des Bildschirms, um gleich benannte Quellen unterscheidbar zu machen. */
+  size: { width: number; height: number } | null;
 }
+
+/**
+ * Status der macOS-Datenschutzberechtigungen, ohne die weder Bildschirm-
+ * freigabe noch Fernsteuerung funktionieren. Auf Windows/Linux immer
+ * "granted"/true.
+ */
+export interface PermissionStatus {
+  /** Bedienungshilfen — Voraussetzung für Maus-/Tastatursimulation. */
+  accessibility: boolean;
+  /** Bildschirmaufnahme — Voraussetzung für ein echtes Bildschirmbild. */
+  screen: "granted" | "denied" | "restricted" | "not-determined" | "unknown";
+}
+
+/** Bereich der Systemeinstellungen, der geöffnet werden soll. */
+export type PrivacyPane = "accessibility" | "screen";
 
 export interface AppInfo {
   platform: NodeJS.Platform;
@@ -143,8 +167,10 @@ export const IPC_CHANNELS = {
   getAppInfo: "app:get-info",
   getDesktopSources: "app:get-desktop-sources",
   simulateInput: "input:simulate",
-  checkAccessibilityPermission: "permissions:check-accessibility",
-  requestScreenPermission: "permissions:request-screen",
+  /** Legt fest, auf welchem Bildschirm Eingaben ausgeführt werden. */
+  setInputDisplay: "input:set-display",
+  getPermissions: "permissions:get",
+  openPrivacySettings: "permissions:open-settings",
   regenerateHostPassword: "app:regenerate-host-password",
 } as const;
 

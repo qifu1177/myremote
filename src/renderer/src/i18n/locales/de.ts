@@ -15,7 +15,13 @@ export const de: Translations = {
     regeneratePassword: "Neues Passwort generieren",
     copyPassword: "Passwort kopieren",
     accessibilityHint:
-      "Hinweis: Bedienungshilfen-Berechtigung fehlt. Fernsteuerung (Maus/Tastatur) funktioniert erst, nachdem sie in Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen erteilt wurde.",
+      "Bedienungshilfen-Berechtigung fehlt. Fernsteuerung (Maus/Tastatur) funktioniert erst, nachdem sie in Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen erteilt und die App neu gestartet wurde.",
+    screenPermissionHint:
+      "Bildschirmaufnahme-Berechtigung fehlt. Ohne sie überträgt macOS nur ein Ersatzbild — der Gegenseite wird der falsche Bildschirminhalt angezeigt.",
+    screenPermissionRequired:
+      "Bildschirmfreigabe nicht möglich: Die Berechtigung „Bildschirmaufnahme“ fehlt. Bitte in den Systemeinstellungen erteilen und die App neu starten.",
+    openSystemSettings: "Systemeinstellungen öffnen",
+    recheckPermission: "Erneut prüfen",
     shareScreen: "Bildschirm freigeben",
     stopSharing: "Freigabe beenden",
     chooseScreen: "Bildschirm wählen",

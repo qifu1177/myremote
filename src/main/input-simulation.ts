@@ -15,6 +15,7 @@ import { screen as electronScreen } from "electron";
 // mit in out/main/index.js aufnimmt — ein require() zur Laufzeit würde im Build
 // auf eine nicht existierende Datei zeigen.
 import { resolveNutKeyName } from "./key-map";
+import { displayRect, normToGlobalPoint, pickDisplay, type GlobalRect } from "./display-mapping";
 
 // nut-js wird lazy geladen, damit ein Fehlen des nativen Moduls (z.B. wenn
 // Build-Tools fehlen) nicht sofort den ganzen Main-Prozess crasht — der
@@ -34,9 +35,33 @@ async function loadNut() {
   }
 }
 
-function currentDisplaySizePx(): { width: number; height: number } {
-  const display = electronScreen.getPrimaryDisplay();
-  return { width: display.size.width, height: display.size.height };
+/**
+ * Bildschirm, auf den eingehende Koordinaten abgebildet werden — gesetzt vom
+ * Renderer beim Start der Freigabe (Electron-Display-ID der gewählten Quelle).
+ * null = primärer Bildschirm.
+ */
+let inputDisplayId: string | null = null;
+
+/** Legt fest, auf welchem Bildschirm Eingaben ausgeführt werden. */
+export function setInputDisplayId(displayId: string | null): void {
+  inputDisplayId = displayId;
+}
+
+/**
+ * Ursprung + Größe des freigegebenen Bildschirms in globalen Koordinaten.
+ *
+ * nut-js positioniert die Maus im globalen Koordinatensystem aller Monitore.
+ * Rechnet man normierte Koordinaten (0..1 des *freigegebenen* Bildes) nur auf
+ * die Größe des primären Bildschirms um, landen Klicks bei mehreren Monitoren
+ * auf dem falschen Schirm bzw. an der falschen Stelle.
+ */
+function currentDisplayRect(): GlobalRect {
+  const display = pickDisplay(
+    electronScreen.getAllDisplays(),
+    inputDisplayId,
+    electronScreen.getPrimaryDisplay(),
+  );
+  return displayRect(display);
 }
 
 function resolveNutKey(
@@ -58,11 +83,7 @@ export async function applyRemoteInputEvent(evt: RemoteInputEvent): Promise<void
   try {
     switch (evt.type) {
       case "mouse-move": {
-        const { width, height } = currentDisplaySizePx();
-        await nut.mouse.setPosition({
-          x: Math.round(evt.xNorm * width),
-          y: Math.round(evt.yNorm * height),
-        });
+        await nut.mouse.setPosition(normToGlobalPoint(evt, currentDisplayRect()));
         break;
       }
       case "mouse-down": {
