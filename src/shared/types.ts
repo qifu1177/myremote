@@ -78,7 +78,23 @@ export type SignalPayload =
    *  jeder Verbindung"), bevor der WebRTC-Handshake überhaupt beginnt. Wird
    *  über den bereits vorhandenen "signal"-Relay-Kanal gesendet, damit der
    *  Signaling-Server dafür nicht angepasst werden muss. */
-  | { kind: "reject" };
+  | { kind: "reject" }
+  /** Text-Chat zwischen Host und Controller. Läuft bewusst über den
+   *  "signal"-Relay-Kanal und nicht über den WebRTC-DataChannel: Nur so kann
+   *  bereits gechattet werden, BEVOR die Peer-Verbindung (Video/Eingabe)
+   *  steht — und der Signaling-Server bleibt unverändert. */
+  | { kind: "chat"; message: ChatMessage };
+
+/** Eine über den Signaling-Kanal ausgetauschte Chat-Nachricht. */
+export interface ChatMessage {
+  /** Eindeutige ID der Nachricht (vom Absender vergeben). */
+  id: string;
+  /** Rolle des Absenders. */
+  from: Role;
+  text: string;
+  /** Sendezeitpunkt als Unix-Zeit in Millisekunden. */
+  sentAt: number;
+}
 
 // ---------------------------------------------------------------------------
 // Eingabe-Events (Controller -> Host über WebRTC DataChannel)

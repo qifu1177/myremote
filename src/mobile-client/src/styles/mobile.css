@@ -641,6 +641,150 @@ button {
   }
 }
 
+/* --------------------------------------------------------------- Chat
+ * Der Chat läuft über den Signaling-Kanal und ist deshalb auch dann
+ * bedienbar, wenn (noch) kein Bild ankommt — das Overlay liegt entsprechend
+ * über der Bühne inklusive Wartehinweis.
+ */
+
+/* Bühne + Chat-Overlay als Geschwister: Das Overlay liegt über dem Bild,
+ * gehört aber NICHT zur .remote-stage, die alle Zeiger-Events abfängt. */
+.remote-stage-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.remote-stage-wrap > .remote-stage {
+  flex: 1;
+}
+
+.chat-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(5, 7, 10, 0.55);
+  /* Eingaben im Chat dürfen nicht als Fernsteuerungs-Gesten enden */
+  touch-action: auto;
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-subtle);
+  padding-bottom: var(--safe-bottom);
+}
+
+.chat-panel-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.chat-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.chat-empty {
+  margin: auto 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.chat-message {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.chat-message.own {
+  align-self: flex-end;
+  background: rgba(62, 207, 178, 0.16);
+}
+
+.chat-message-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+
+.chat-message-text {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-composer {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.chat-composer input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  /* 16px verhindert das automatische Hineinzoomen von iOS Safari */
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+}
+
+.chat-composer input:focus {
+  border-color: var(--accent);
+}
+
+/* Ungelesen-Marker am Chat-Knopf der Aktionsleiste */
+.action-icon {
+  position: relative;
+}
+
+.chat-unread-dot {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
 /* ------------------------------------------------------ Tastatur-Leiste */
 
 .keyboard-bar {

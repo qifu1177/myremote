@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { RemoteInputEvent } from "@shared/types";
+import type { ChatMessage, RemoteInputEvent } from "@shared/types";
 import { ControllerSession } from "../lib/controllerSession";
 import { StatusBadge } from "./StatusBadge";
+import { ChatPanel } from "./ChatPanel";
 import { useTranslation } from "../i18n";
 import type { AppSettings } from "../hooks/useAppSettings";
 import { ChatIcon, ExpandIcon, FolderIcon } from "./icons";
@@ -29,6 +30,8 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [resolution, setResolution] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState(0);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [unreadChat, setUnreadChat] = useState(0);
 
   useEffect(() => {
     const session = new ControllerSession(signalingUrl, hostId, password, {
@@ -37,6 +40,10 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(() => {});
         }
+      },
+      onChatMessage: (msg) => {
+        setChatMessages((prev) => [...prev, msg]);
+        setUnreadChat((n) => n + 1);
       },
       onConnected: () => setState("connected"),
       onDisconnected: () => setState("disconnected"),
@@ -118,6 +125,12 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
 
   function togglePanel(next: SidePanel): void {
     setPanel((prev) => (prev === next ? "none" : next));
+    if (next === "chat") setUnreadChat(0);
+  }
+
+  function sendChat(text: string): void {
+    const sent = sessionRef.current?.sendChat(text);
+    if (sent) setChatMessages((prev) => [...prev, sent]);
   }
 
   return (
@@ -145,10 +158,11 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
           <button
             type="button"
             className={`toolbar-icon-btn ${panel === "chat" ? "active" : ""}`}
-            title={t.remoteView.chat}
+            title={unreadChat > 0 ? t.chat.unread(unreadChat) : t.remoteView.chat}
             onClick={() => togglePanel("chat")}
           >
             <ChatIcon size={17} />
+            {unreadChat > 0 && <span className="chat-unread-dot" />}
           </button>
           <button
             type="button"
@@ -217,9 +231,16 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
         {state === "connected" && resolution && (
           <div className="remote-stage-info">{t.remoteView.connectionInfo(resolution, latencyMs)}</div>
         )}
-        {panel !== "none" && (
+        {panel === "files" && (
           <div className="settings-inline" style={{ position: "absolute", right: 16, top: 16, background: "var(--bg-card)", padding: 16, borderRadius: 10, maxWidth: 260 }}>
             {t.remoteView.featureNotAvailable}
+          </div>
+        )}
+        {panel === "chat" && (
+          <div className="remote-chat-overlay">
+            {/* Der Chat läuft über den Signaling-Kanal und ist deshalb schon
+                vor dem Zustandekommen der Bildschirmverbindung nutzbar. */}
+            <ChatPanel messages={chatMessages} selfRole="controller" onSend={sendChat} />
           </div>
         )}
       </div>

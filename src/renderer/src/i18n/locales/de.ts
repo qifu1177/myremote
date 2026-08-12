@@ -83,6 +83,18 @@ export const de: Translations = {
     title: "Fernzugriff",
     subtitle: "Verbinde dich mit einem Gerät oder teile deine Kennung, damit andere sich mit dir verbinden können.",
   },
+  chat: {
+    title: "Chat",
+    empty: "Noch keine Nachrichten. Schreibe die erste — auch schon vor dem Verbindungsaufbau.",
+    placeholder: "Nachricht schreiben…",
+    send: "Senden",
+    you: "Du",
+    partner: "Gegenstelle",
+    waitingForPeer: "Noch ist niemand verbunden. Nachrichten können erst gesendet werden, sobald die Gegenstelle da ist.",
+    unread: (count) => `Chat (${count} neu)`,
+    open: "Chat öffnen",
+    close: "Chat schließen",
+  },
   mobileAccess: {
     title: "Vom Tablet oder Handy steuern",
     subtitle: "QR-Code mit iPad, iPhone oder Android-Handy scannen — die Steuerung läuft direkt im Browser.",

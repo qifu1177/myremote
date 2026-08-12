@@ -934,3 +934,115 @@ body[data-platform="darwin"] .remote-toolbar {
   word-break: break-all;
   line-height: 1.4;
 }
+
+/* Chat (HostCard-Panel und RemoteView-Overlay) */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+.chat-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  height: 220px;
+  overflow-y: auto;
+}
+.chat-empty {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: auto 0;
+}
+.chat-message {
+  max-width: 85%;
+  padding: 7px 11px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.chat-message.own {
+  align-self: flex-end;
+  background: var(--accent-soft);
+}
+.chat-message-meta {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+.chat-message-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chat-composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.chat-composer input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+.chat-composer input:focus {
+  border-color: var(--accent);
+}
+.chat-composer .btn {
+  padding: 9px 16px;
+  font-size: 13px;
+}
+.chat-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 0 14px 12px;
+}
+
+/* Ungelesen-Marker am Chat-Icon */
+.toolbar-icon-btn {
+  position: relative;
+}
+.chat-unread-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.remote-chat-overlay {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 300px;
+  max-width: calc(100% - 32px);
+}
+.remote-chat-overlay .chat-panel {
+  margin-top: 0;
+  background: var(--bg-card);
+}

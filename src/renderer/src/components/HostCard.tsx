@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AppInfo, DesktopSource, PermissionStatus } from "@shared/types";
+import type { AppInfo, ChatMessage, DesktopSource, PermissionStatus } from "@shared/types";
 import { HostSession } from "../lib/hostSession";
 import { captureDesktopStream } from "../lib/screenCapture";
 import { missingPermissions } from "../lib/permissions";
 import { StatusBadge } from "./StatusBadge";
+import { ChatPanel } from "./ChatPanel";
 import { useTranslation } from "../i18n";
 import type { AppSettings } from "../hooks/useAppSettings";
-import { CopyIcon, EyeIcon, EyeOffIcon, RefreshIcon } from "./icons";
+import { ChatIcon, CopyIcon, EyeIcon, EyeOffIcon, RefreshIcon } from "./icons";
 
 interface HostCardProps {
   appInfo: AppInfo | null;
@@ -28,6 +29,11 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
   const [password, setPassword] = useState<string | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(0);
+  /** Wie viele Controller aktuell per Chat erreichbar sind (auch ohne Peer-Verbindung). */
+  const [chatPeers, setChatPeers] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionRef = useRef<HostSession | null>(null);
   // Ref statt direktem State-Zugriff im Callback, da confirmIncomingConnection
@@ -66,6 +72,14 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
     setRefreshing(true);
     try {
       const next = await window.myremote.regenerateHostPassword();
+      // Eine reine Chat-Anmeldung läuft noch mit dem alten Passwort — sie wird
+      // beendet und unten automatisch mit dem neuen neu angemeldet. Während
+      // einer laufenden Freigabe bleibt die Sitzung unangetastet.
+      if (!sharing) {
+        sessionRef.current?.stop();
+        sessionRef.current = null;
+        setChatPeers(0);
+      }
       setPassword(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -92,15 +106,77 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
     return () => window.removeEventListener("focus", onFocus);
   }, [refreshPermissions]);
 
+  /** Beendet nur die Bildschirmfreigabe — die Sitzung (und damit der Chat) bleibt. */
   const stopSharing = useCallback(() => {
-    sessionRef.current?.stop();
-    sessionRef.current = null;
+    sessionRef.current?.stopStream();
     setSharing(false);
     setConnectedPeers(new Set());
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  useEffect(() => () => stopSharing(), [stopSharing]);
+  /** Beim Verlassen der Seite alles abbauen (auch die Chat-Sitzung). */
+  useEffect(
+    () => () => {
+      sessionRef.current?.stop();
+      sessionRef.current = null;
+    },
+    [],
+  );
+
+  /**
+   * Liefert die laufende Host-Sitzung; meldet den Host bei Bedarf ohne
+   * Bildschirmfreigabe beim Signaling-Server an. So ist er für den Chat
+   * erreichbar, ohne etwas freizugeben.
+   */
+  const ensureSession = useCallback(async (): Promise<HostSession | null> => {
+    if (sessionRef.current) return sessionRef.current;
+    if (!appInfo) return null;
+    const session = new HostSession(signalingUrl, appInfo.hostId, password ?? appInfo.hostPassword, {
+      onPeerConnected: (id) => setConnectedPeers((prev) => new Set(prev).add(id)),
+      onPeerDisconnected: (id) =>
+        setConnectedPeers((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        }),
+      onRemoteInput: (evt) => window.myremote.simulateInput(evt),
+      onChatMessage: (msg) => {
+        setChatMessages((prev) => [...prev, msg]);
+        setUnreadChat((n) => n + 1);
+        setChatOpen(true);
+      },
+      onChatPeersChanged: setChatPeers,
+      onError: (msg) => setError(msg),
+      confirmIncomingConnection: () =>
+        Promise.resolve(
+          !securitySettingsRef.current.confirmEachConnection || window.confirm(t.hostCard.confirmIncomingConnection),
+        ),
+    });
+    sessionRef.current = session;
+    await session.start();
+    return session;
+    // t/securitySettings werden bewusst über Refs bzw. beim Erzeugen gelesen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appInfo, signalingUrl, password]);
+
+  function sendChat(text: string): void {
+    const sent = sessionRef.current?.sendChat(text);
+    if (sent) setChatMessages((prev) => [...prev, sent]);
+  }
+
+  async function toggleChat(): Promise<void> {
+    if (chatOpen) {
+      setChatOpen(false);
+      return;
+    }
+    setUnreadChat(0);
+    setChatOpen(true);
+    try {
+      await ensureSession();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   async function openPicker(): Promise<void> {
     setError(null);
@@ -128,23 +204,11 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => {});
       }
-      const session = new HostSession(signalingUrl, appInfo.hostId, password ?? appInfo.hostPassword, {
-        onPeerConnected: (id) => setConnectedPeers((prev) => new Set(prev).add(id)),
-        onPeerDisconnected: (id) =>
-          setConnectedPeers((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          }),
-        onRemoteInput: (evt) => window.myremote.simulateInput(evt),
-        onError: (msg) => setError(msg),
-        confirmIncomingConnection: () =>
-          Promise.resolve(
-            !securitySettingsRef.current.confirmEachConnection || window.confirm(t.hostCard.confirmIncomingConnection),
-          ),
-      });
-      sessionRef.current = session;
-      await session.start(stream);
+      // Läuft bereits eine (Chat-)Sitzung, wird sie weiterverwendet — sonst
+      // ginge der bisherige Chat beim Start der Freigabe verloren.
+      const session = await ensureSession();
+      if (!session) return;
+      await session.setStream(stream);
       setSharing(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -259,17 +323,30 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
       )}
 
       {sharing && (
-        <>
-          <div className="host-preview">
-            <video ref={videoRef} muted autoPlay playsInline />
-          </div>
-          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
-            <StatusBadge status={connectedPeers.size > 0 ? "live" : "idle"}>
-              {connectedPeers.size > 0 ? t.hostCard.peersConnected(connectedPeers.size) : t.hostCard.waitingForConnection}
-            </StatusBadge>
-          </div>
-        </>
+        <div className="host-preview">
+          <video ref={videoRef} muted autoPlay playsInline />
+        </div>
       )}
+
+      {/* Chat ist bewusst unabhängig von der Bildschirmfreigabe erreichbar:
+          Er läuft über den Signaling-Kanal, nicht über die Peer-Verbindung. */}
+      <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
+        {sharing && (
+          <StatusBadge status={connectedPeers.size > 0 ? "live" : "idle"}>
+            {connectedPeers.size > 0 ? t.hostCard.peersConnected(connectedPeers.size) : t.hostCard.waitingForConnection}
+          </StatusBadge>
+        )}
+        <button
+          type="button"
+          className={`toolbar-icon-btn ${chatOpen ? "active" : ""}`}
+          title={unreadChat > 0 ? t.chat.unread(unreadChat) : chatOpen ? t.chat.close : t.chat.open}
+          onClick={() => void toggleChat()}
+        >
+          <ChatIcon size={17} />
+          {unreadChat > 0 && <span className="chat-unread-dot" />}
+        </button>
+      </div>
+      {chatOpen && <ChatPanel messages={chatMessages} selfRole="host" onSend={sendChat} disabled={chatPeers === 0} />}
 
       <div className="card-hint">{t.hostCard.hint}</div>
     </div>

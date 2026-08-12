@@ -66,6 +66,8 @@ export class MouseInputController {
   private viewport: Viewport = { scale: 1, offsetX: 0, offsetY: 0 };
   /** Nicht verbrauchte Bruchteile einer Rasterstufe. */
   private scrollRemainder = { x: 0, y: 0 };
+  /** Tasten, die im Bild gedrückt wurden und noch nicht losgelassen sind. */
+  private pressed = new Set<string>();
 
   constructor(private readonly callbacks: MouseInputCallbacks) {}
 
@@ -89,6 +91,7 @@ export class MouseInputController {
     const name = mouseButtonFromEvent(button);
     if (!name) return;
     const norm = this.toNorm(point);
+    this.pressed.add(name);
     // Erst positionieren, dann drücken: Sonst klickt der Host an der zuletzt
     // gemeldeten Stelle (z.B. wenn der Klick ohne vorherige Bewegung kommt).
     this.callbacks.onInput({ type: "mouse-move", ...norm });
@@ -98,6 +101,11 @@ export class MouseInputController {
   onUp(point: MousePoint, button: number): void {
     const name = mouseButtonFromEvent(button);
     if (!name) return;
+    // `mouseup` wird am Fenster abgefangen, damit eine außerhalb des Bildes
+    // losgelassene Taste nicht gedrückt hängen bleibt. Ein Loslassen ohne
+    // vorheriges Drücken im Bild (z.B. Klick ins Chat-Fenster) gehört dem Host
+    // aber nicht — sonst käme dort ein Geister-Klick an.
+    if (!this.pressed.delete(name)) return;
     this.callbacks.onInput({ type: "mouse-up", button: name, ...this.toNorm(point) });
   }
 

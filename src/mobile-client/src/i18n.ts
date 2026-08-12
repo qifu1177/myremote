@@ -52,6 +52,12 @@ export interface MobileTexts {
   installHint: string;
   retry: string;
   fullscreen: string;
+  chat: string;
+  chatEmpty: string;
+  chatPlaceholder: string;
+  chatSend: string;
+  chatYou: string;
+  chatPartner: string;
 }
 
 const de: MobileTexts = {
@@ -103,6 +109,12 @@ const de: MobileTexts = {
   installHint: "Tipp: Über „Zum Home-Bildschirm“ läuft mydesk im Vollbild.",
   retry: "Erneut versuchen",
   fullscreen: "Vollbild",
+  chat: "Chat",
+  chatEmpty: "Noch keine Nachrichten. Schreiben ist auch ohne Bildschirmfreigabe möglich.",
+  chatPlaceholder: "Nachricht schreiben …",
+  chatSend: "Senden",
+  chatYou: "Du",
+  chatPartner: "Partner",
 };
 
 const en: MobileTexts = {
@@ -154,6 +166,12 @@ const en: MobileTexts = {
   installHint: "Tip: use “Add to Home Screen” to run mydesk full screen.",
   retry: "Try again",
   fullscreen: "Full screen",
+  chat: "Chat",
+  chatEmpty: "No messages yet. You can chat even without screen sharing.",
+  chatPlaceholder: "Write a message …",
+  chatSend: "Send",
+  chatYou: "You",
+  chatPartner: "Partner",
 };
 
 const zh: MobileTexts = {
@@ -205,6 +223,12 @@ const zh: MobileTexts = {
   installHint: "提示：添加到主屏幕可全屏运行。",
   retry: "重试",
   fullscreen: "全屏",
+  chat: "聊天",
+  chatEmpty: "暂无消息。即使未共享屏幕也可以聊天。",
+  chatPlaceholder: "输入消息 …",
+  chatSend: "发送",
+  chatYou: "我",
+  chatPartner: "对方",
 };
 
 const dictionaries: Record<Locale, MobileTexts> = { de, en, zh };

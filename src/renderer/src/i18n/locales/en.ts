@@ -83,6 +83,18 @@ export const en: Translations = {
     title: "Remote access",
     subtitle: "Connect to a device, or share your ID so others can connect to you.",
   },
+  chat: {
+    title: "Chat",
+    empty: "No messages yet. Write the first one — even before the connection is established.",
+    placeholder: "Write a message…",
+    send: "Send",
+    you: "You",
+    partner: "Peer",
+    waitingForPeer: "Nobody is connected yet. Messages can be sent as soon as the other side is there.",
+    unread: (count) => `Chat (${count} new)`,
+    open: "Open chat",
+    close: "Close chat",
+  },
   mobileAccess: {
     title: "Control from tablet or phone",
     subtitle: "Scan the QR code with an iPad, iPhone or Android phone — control runs right in the browser.",

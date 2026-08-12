@@ -463,6 +463,29 @@ wird die Verbindung mit `join-rejected` (`reason: "wrong-password"`)
 abgelehnt und in der Controller-UI angezeigt — es wird kein WebRTC-Handshake
 gestartet.
 
+## Chat zwischen zwei Geräten
+
+Host und Controller können Textnachrichten austauschen — **vor und nach** dem
+Aufbau der Bildschirmverbindung.
+
+- **Controller**: In der Remote-Ansicht das Chat-Symbol in der Toolbar öffnen.
+- **Host**: Nach dem Start der Bildschirmfreigabe erscheint neben dem
+  Verbindungsstatus ein Chat-Symbol.
+- Neue Nachrichten bei geschlossenem Chat werden durch einen Punkt am Symbol
+  markiert.
+
+Technisch laufen die Nachrichten über den **Signaling-Kanal** (Relay-Nachricht
+`{ kind: "chat", message }` in `SignalPayload`, siehe `src/shared/types.ts`) und
+nicht über den WebRTC-DataChannel. Nur so kann bereits geschrieben werden,
+bevor die Peer-Verbindung steht (z.B. um das Passwort abzustimmen oder eine
+Verbindung anzukündigen). Der Signaling-Server musste dafür nicht angepasst
+werden, da er `signal`-Nachrichten unverändert weiterleitet. Der Host sendet
+an alle aktuell beigetretenen Controller.
+
+> Hinweis: Da der Chat über den Signaling-Server läuft, gilt für ihn nicht die
+> Ende-zu-Ende-Verschlüsselung von WebRTC — er ist nur so sicher wie der
+> Transport zum Signaling-Server (im MVP `ws://`, siehe Einschränkungen).
+
 ## Bekannte Einschränkungen (MVP)
 
 - **NAT-Traversal / Internet-Verbindungen**: Es wird nur ein öffentlicher
@@ -490,6 +513,9 @@ gestartet.
   Eingabesimulation aktuell der primäre Bildschirm (`screen.getPrimaryDisplay`)
   als Referenzgröße für die Koordinatenumrechnung angenommen.
 - **Kein Clipboard-Sync, kein Dateitransfer** (siehe "Nächste Schritte").
+- **Chat**: Der Verlauf wird nicht gespeichert (nur im Speicher der laufenden
+  Sitzung) und läuft über den Signaling-Server, ist also nicht
+  Ende-zu-Ende-verschlüsselt. Der Mobile-Client hat noch keine Chat-Oberfläche.
 
 ## Nächste sinnvolle Schritte
 

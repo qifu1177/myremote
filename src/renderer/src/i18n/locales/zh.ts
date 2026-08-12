@@ -83,6 +83,18 @@ export const zh: Translations = {
     title: "远程访问",
     subtitle: "连接到某台设备，或分享您的 ID 以便其他人连接到您。",
   },
+  chat: {
+    title: "聊天",
+    empty: "还没有消息。发送第一条吧——在建立连接之前也可以。",
+    placeholder: "输入消息…",
+    send: "发送",
+    you: "我",
+    partner: "对方",
+    waitingForPeer: "目前还没有人连接。对方接入后即可发送消息。",
+    unread: (count) => `聊天（${count} 条新消息）`,
+    open: "打开聊天",
+    close: "关闭聊天",
+  },
   mobileAccess: {
     title: "使用平板或手机控制",
     subtitle: "用 iPad、iPhone 或安卓手机扫描二维码，直接在浏览器中进行远程控制。",

@@ -83,6 +83,20 @@ export interface Translations {
     title: string;
     subtitle: string;
   };
+  /** Text-Chat zwischen Host und Controller. */
+  chat: {
+    title: string;
+    empty: string;
+    placeholder: string;
+    send: string;
+    you: string;
+    partner: string;
+    waitingForPeer: string;
+    /** Titel des Chat-Buttons auf der Host-Karte, inkl. Anzahl ungelesener Nachrichten. */
+    unread: (count: number) => string;
+    open: string;
+    close: string;
+  };
   /** Karte "Vom Tablet/Handy steuern" (QR-Code für den Mobile-Client). */
   mobileAccess: {
     title: string;

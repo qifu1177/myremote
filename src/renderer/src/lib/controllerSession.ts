@@ -1,10 +1,13 @@
-import type { RemoteInputEvent, SignalPayload } from "@shared/types";
+import type { ChatMessage, RemoteInputEvent, SignalPayload } from "@shared/types";
 import { DATA_CHANNEL_LABEL } from "@shared/types";
 import { SignalingClient } from "./signalingClient";
+import { createChatMessage } from "./chatMessage";
 import { RTC_CONFIG } from "./rtcConfig";
 
 export interface ControllerSessionCallbacks {
   onRemoteStream?: (stream: MediaStream) => void;
+  /** Eingehende Chat-Nachricht des Hosts (auch vor dem WebRTC-Aufbau). */
+  onChatMessage?: (message: ChatMessage) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
   onRejected?: (reason: string) => void;
@@ -47,6 +50,21 @@ export class ControllerSession {
     if (this.dataChannel?.readyState === "open") {
       this.dataChannel.send(JSON.stringify(evt));
     }
+  }
+
+  /**
+   * Sendet eine Chat-Nachricht an den Host und liefert sie zurück (für die
+   * eigene Anzeige). Läuft über den Signaling-Kanal, ist also schon vor dem
+   * Aufbau der Peer-Verbindung nutzbar.
+   */
+  sendChat(text: string): ChatMessage {
+    const message = createChatMessage("controller", text);
+    this.signaling.send({
+      type: "signal",
+      hostId: this.hostId,
+      data: { kind: "chat", message },
+    });
+    return message;
   }
 
   /** true, sobald Eingaben tatsächlich zum Host übertragen werden können. */
@@ -120,6 +138,10 @@ export class ControllerSession {
   }
 
   private async handleSignal(data: SignalPayload): Promise<void> {
+    if (data.kind === "chat") {
+      this.callbacks.onChatMessage?.(data.message);
+      return;
+    }
     if (data.kind === "reject") {
       this.callbacks.onRejected?.("rejected-by-host");
       this.disconnect();

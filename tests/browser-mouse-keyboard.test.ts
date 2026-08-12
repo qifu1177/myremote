@@ -58,6 +58,7 @@ describe("Maus-Bedienung im Browser", () => {
   });
 
   it("überträgt das Loslassen inklusive Taste", () => {
+    ctrl.onDown({ x: 500, y: 250 }, 2);
     ctrl.onUp({ x: 500, y: 250 }, 2);
     expect(events.at(-1)).toEqual({
       type: "mouse-up",
@@ -70,6 +71,29 @@ describe("Maus-Bedienung im Browser", () => {
   it("ignoriert Tasten, die das Protokoll nicht kennt", () => {
     ctrl.onDown({ x: 500, y: 250 }, 3);
     ctrl.onUp({ x: 500, y: 250 }, 3);
+    expect(events).toEqual([]);
+  });
+
+  // `mouseup` hängt am Fenster, damit eine außerhalb des Bildes losgelassene
+  // Taste nicht gedrückt hängen bleibt. Dadurch erreichte bisher aber auch ein
+  // Klick, der gar nicht im Bild begann (z.B. ins Chat-Fenster), den Host.
+  it("meldet kein Loslassen für eine Taste, die nie im Bild gedrückt wurde", () => {
+    ctrl.onUp({ x: 500, y: 250 }, 0);
+    expect(events).toEqual([]);
+  });
+
+  it("meldet das Loslassen auch außerhalb des Bildes, wenn dort gedrückt wurde", () => {
+    ctrl.onDown({ x: 500, y: 250 }, 0);
+    events.length = 0;
+    ctrl.onUp({ x: -50, y: 250 }, 0);
+    expect(events).toEqual([{ type: "mouse-up", button: "left", xNorm: 0, yNorm: 0.5 }]);
+  });
+
+  it("meldet dasselbe Loslassen nicht doppelt", () => {
+    ctrl.onDown({ x: 500, y: 250 }, 0);
+    ctrl.onUp({ x: 500, y: 250 }, 0);
+    events.length = 0;
+    ctrl.onUp({ x: 500, y: 250 }, 0);
     expect(events).toEqual([]);
   });
 

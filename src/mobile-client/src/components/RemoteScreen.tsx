@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { RemoteInputEvent } from "@shared/types";
+import type { ChatMessage, RemoteInputEvent } from "@shared/types";
 import { ControllerSession } from "@renderer/lib/controllerSession";
 import { TouchInputController, type TouchPoint } from "../lib/touchInput";
 import { MouseInputController } from "../lib/mouseInput";
 import { IDENTITY_VIEWPORT, normToPoint, type Viewport } from "../lib/viewport";
 import { KeyboardBar } from "./KeyboardBar";
+import { ChatPanel } from "./ChatPanel";
 import {
   NO_MODIFIERS,
   keyEventFromBrowser,
@@ -69,6 +70,9 @@ export function RemoteScreen({
   const [showControls, setShowControls] = useState(true);
   const [latencyMs, setLatencyMs] = useState(0);
   const [resolution, setResolution] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatVisible, setChatVisible] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(0);
 
   const sendInput = useCallback((evt: RemoteInputEvent) => {
     sessionRef.current?.sendInput(evt);
@@ -116,6 +120,10 @@ export function RemoteScreen({
             /* Autoplay-Sperre: Nutzer tippt, dann startet die Wiedergabe */
           });
         }
+      },
+      onChatMessage: (msg) => {
+        setChatMessages((prev) => [...prev, msg]);
+        setUnreadChat((n) => n + 1);
       },
       onConnected: () => setState("connected"),
       onDisconnected: () => setState("disconnected"),
@@ -327,6 +335,18 @@ export function RemoteScreen({
     for (const evt of events) sendInput(evt);
   }
 
+  function sendChat(text: string): void {
+    const sent = sessionRef.current?.sendChat(text);
+    if (sent) setChatMessages((prev) => [...prev, sent]);
+  }
+
+  function toggleChat(): void {
+    setChatVisible((visible) => {
+      if (!visible) setUnreadChat(0);
+      return !visible;
+    });
+  }
+
   function toggleFullscreen(): void {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     else void stageRef.current?.requestFullscreen?.().catch(() => {});
@@ -364,54 +384,71 @@ export function RemoteScreen({
         </button>
       </header>
 
-      {/* tabIndex: macht die Bühne fokussierbar, damit ein Klick ins Bild den
-          Fokus aus etwaigen Eingabefeldern holt. */}
-      <div className="remote-stage" ref={stageRef} tabIndex={-1}>
-        <video
-          ref={videoRef}
-          className="remote-video"
-          autoPlay
-          playsInline
-          muted
-          style={{
-            transform: `translate(${viewport.offsetX}px, ${viewport.offsetY}px) scale(${viewport.scale})`,
-          }}
-          onLoadedMetadata={(e) => {
-            const v = e.currentTarget;
-            if (v.videoWidth && v.videoHeight) {
-              const aspect = v.videoWidth / v.videoHeight;
-              setVideoAspect(aspect);
-              touch.setVideoAspect(aspect);
-              mouse.setVideoAspect(aspect);
-            }
-          }}
-        />
-
-        {state !== "connected" && (
-          <div className="stage-overlay">
-            <p className="overlay-text">{message ?? texts.waitingForStream}</p>
-            {(state === "error" || state === "rejected" || state === "disconnected") && (
-              <button type="button" className="btn btn-primary" onClick={onClose}>
-                {texts.retry}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Der virtuelle Zeiger ergibt nur per Finger Sinn — mit echter Maus
-            steht der Systemcursor bereits an der richtigen Stelle. */}
-        {state === "connected" && device.isTouch && (
-          <div
-            className={`virtual-cursor ${dragging ? "dragging" : ""}`}
-            style={{ transform: `translate(${cursorPoint.x}px, ${cursorPoint.y}px)` }}
-            aria-hidden="true"
+      <div className="remote-stage-wrap">
+        {/* tabIndex: macht die Bühne fokussierbar, damit ein Klick ins Bild den
+            Fokus aus etwaigen Eingabefeldern holt. */}
+        <div className="remote-stage" ref={stageRef} tabIndex={-1}>
+          <video
+            ref={videoRef}
+            className="remote-video"
+            autoPlay
+            playsInline
+            muted
+            style={{
+              transform: `translate(${viewport.offsetX}px, ${viewport.offsetY}px) scale(${viewport.scale})`,
+            }}
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              if (v.videoWidth && v.videoHeight) {
+                const aspect = v.videoWidth / v.videoHeight;
+                setVideoAspect(aspect);
+                touch.setVideoAspect(aspect);
+                mouse.setVideoAspect(aspect);
+              }
+            }}
           />
-        )}
 
-        {!showControls && (
-          <button type="button" className="show-controls-btn" onClick={() => setShowControls(true)}>
-            ⌃
-          </button>
+          {state !== "connected" && (
+            <div className="stage-overlay">
+              <p className="overlay-text">{message ?? texts.waitingForStream}</p>
+              {(state === "error" || state === "rejected" || state === "disconnected") && (
+                <button type="button" className="btn btn-primary" onClick={onClose}>
+                  {texts.retry}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Der virtuelle Zeiger ergibt nur per Finger Sinn — mit echter Maus
+              steht der Systemcursor bereits an der richtigen Stelle. */}
+          {state === "connected" && device.isTouch && (
+            <div
+              className={`virtual-cursor ${dragging ? "dragging" : ""}`}
+              style={{ transform: `translate(${cursorPoint.x}px, ${cursorPoint.y}px)` }}
+              aria-hidden="true"
+            />
+          )}
+
+          {!showControls && (
+            <button type="button" className="show-controls-btn" onClick={() => setShowControls(true)}>
+              ⌃
+            </button>
+          )}
+        </div>
+
+        {/* Bewusst AUSSERHALB der Bühne (nur darüber gelegt): Die Bühne fängt
+            touchstart/mousedown mit preventDefault() ab und zieht den Fokus zu
+            sich. Läge der Chat darin, bekäme sein Eingabefeld nie den Fokus und
+            die getippten Zeichen gingen als Tastendrücke an den Host. */}
+        {chatVisible && (
+          <div className="chat-overlay">
+            <ChatPanel
+              messages={chatMessages}
+              onSend={sendChat}
+              onClose={() => setChatVisible(false)}
+              texts={texts}
+            />
+          </div>
         )}
       </div>
 
@@ -439,6 +476,15 @@ export function RemoteScreen({
         >
           <span className="action-icon">⌨</span>
           <span className="action-label">{texts.keyboard}</span>
+        </button>
+        {/* Chat läuft über den Signaling-Kanal und ist deshalb auch ohne
+            stehende Bildschirmverbindung nutzbar. */}
+        <button type="button" className={`action-btn ${chatVisible ? "active" : ""}`} onClick={toggleChat}>
+          <span className="action-icon">
+            💬
+            {unreadChat > 0 && <span className="chat-unread-dot" />}
+          </span>
+          <span className="action-label">{texts.chat}</span>
         </button>
         <button
           type="button"
