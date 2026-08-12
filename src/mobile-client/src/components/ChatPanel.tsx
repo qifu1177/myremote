@@ -8,6 +8,8 @@ interface ChatPanelProps {
   /** Sendet den Text; wird nur mit nicht-leerem Text aufgerufen. */
   onSend: (text: string) => void;
   onClose: () => void;
+  /** Optionaler Fehlerhinweis (z.B. Host nicht erreichbar), falls vorhanden. */
+  error?: string | null;
   texts: MobileTexts;
 }
 
@@ -21,7 +23,7 @@ function formatTime(sentAt: number): string {
  * Der Chat läuft — wie in der Desktop-App — über den Signaling-Kanal und ist
  * deshalb auch nutzbar, solange (noch) kein Bildschirm freigegeben ist.
  */
-export function ChatPanel({ messages, onSend, onClose, texts }: ChatPanelProps): JSX.Element {
+export function ChatPanel({ messages, onSend, onClose, error, texts }: ChatPanelProps): JSX.Element {
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -46,6 +48,7 @@ export function ChatPanel({ messages, onSend, onClose, texts }: ChatPanelProps):
           {texts.close}
         </button>
       </header>
+      {error && <p className="chat-panel-error">{error}</p>}
       <div className="chat-messages" ref={listRef}>
         {messages.length === 0 ? (
           <p className="chat-empty">{texts.chatEmpty}</p>

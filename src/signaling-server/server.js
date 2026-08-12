@@ -238,8 +238,14 @@ function createSignalingServer(options = {}) {
     return new Promise((resolve, reject) => {
       const onError = (err) => reject(err);
       httpServer.once("error", onError);
+      // Der WebSocketServer hängt am HTTP-Server und spiegelt dessen
+      // "error"-Event. Ohne eigenen Listener wirft Node dort eine
+      // unbehandelte Ausnahme (z.B. EADDRINUSE), bevor der Aufrufer das
+      // abgelehnte Promise sehen kann.
+      wss.once("error", onError);
       const done = () => {
         httpServer.off("error", onError);
+        wss.off("error", onError);
         resolve(boundPort());
       };
       if (host === undefined) httpServer.listen(port, done);

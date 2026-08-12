@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ChatMessage } from "@shared/types";
+import { ControllerSession } from "@renderer/lib/controllerSession";
 import type { MobileSettings } from "../hooks/useMobileSettings";
 import type { DeviceInfo } from "../hooks/useDeviceClass";
 import { locales, localeLabels, type Locale, type MobileTexts } from "../i18n";
 import type { RecentEntry } from "../hooks/useMobileSettings";
+import { ChatPanel } from "./ChatPanel";
 
 interface ConnectScreenProps {
   texts: MobileTexts;
@@ -28,6 +31,12 @@ function formatId(value: string): string {
  * Startbildschirm: Partner-ID + Passwort eingeben und verbinden.
  * Das Layout ist einspaltig auf dem Handy und zweispaltig ab Tablet-Breite
  * (siehe mobile.css) — die Komponente selbst bleibt layout-agnostisch.
+ *
+ * Neben „Verbinden" gibt es „Chat öffnen": Das startet eine eigene
+ * ControllerSession, die NUR den Chat nutzt (läuft über den Signaling-Kanal,
+ * nicht über die Peer-Verbindung) — man kann also mit dem Host sprechen, ohne
+ * dessen Bildschirm zu sehen. Beim echten Verbinden wird diese Session beendet
+ * und die normale Fernsteuerungs-Sitzung (RemoteScreen) übernimmt.
  */
 export function ConnectScreen({
   texts,
@@ -47,18 +56,72 @@ export function ConnectScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showGestures, setShowGestures] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatError, setChatError] = useState<string | null>(null);
+  // Ref statt State: Die Session-Instanz soll über mehrere Render hinweg
+  // dieselbe bleiben und im Unmount-Cleanup erreichbar sein.
+  const chatSessionRef = useRef<ControllerSession | null>(null);
 
   useEffect(() => {
     if (prefill.hostId) setHostId(formatId(prefill.hostId));
     if (prefill.password) setPassword(prefill.password);
   }, [prefill.hostId, prefill.password]);
 
+  // Chat-Session sauber beenden, wenn die Seite verlassen wird.
+  useEffect(() => () => chatSessionRef.current?.disconnect(), []);
+
   const canConnect = hostId.replace(/\s/g, "").length > 0 && password.length > 0;
 
   function submit(e: React.FormEvent): void {
     e.preventDefault();
     if (!canConnect) return;
+    closeChat();
     onConnect(hostId.replace(/\s/g, ""), password);
+  }
+
+  function openChat(): void {
+    if (!canConnect) return;
+    const session = new ControllerSession(
+      settings.signalingUrl,
+      hostId.replace(/\s/g, ""),
+      password,
+      {
+        onChatMessage: (msg) => {
+          setChatError(null);
+          setChatMessages((prev) => [...prev, msg]);
+        },
+        onRejected: (reason) => {
+          setChatError(
+            reason === "wrong-password"
+              ? texts.wrongPassword
+              : reason === "host-not-found"
+                ? texts.hostNotFound
+                : texts.chatConnectError,
+          );
+        },
+        onError: () => setChatError(texts.chatConnectError),
+      },
+      // Nur chatten: Keine Peer-Verbindung, kein Video — die eigentliche
+      // Bildschirmverbindung entsteht erst über den „Verbinden"-Knopf.
+      { chatOnly: true },
+    );
+    chatSessionRef.current = session;
+    setChatError(null);
+    setChatOpen(true);
+    session.connect().catch(() => setChatError(texts.chatConnectError));
+  }
+
+  function closeChat(): void {
+    chatSessionRef.current?.disconnect();
+    chatSessionRef.current = null;
+    setChatOpen(false);
+    setChatError(null);
+  }
+
+  function sendChat(text: string): void {
+    const sent = chatSessionRef.current?.sendChat(text);
+    if (sent) setChatMessages((prev) => [...prev, sent]);
   }
 
   return (
@@ -132,6 +195,12 @@ export function ConnectScreen({
 
           <button type="submit" className="btn btn-primary btn-lg" disabled={!canConnect}>
             {texts.connect}
+          </button>
+
+          {/* Chat läuft über den Signaling-Kanal und ist deshalb schon nutzbar,
+              bevor (oder ohne dass) eine Bildschirmverbindung steht. */}
+          <button type="button" className="btn btn-ghost btn-lg" disabled={!canConnect} onClick={openChat}>
+            💬 {texts.chatConnect}
           </button>
 
           <button type="button" className="link-btn" onClick={() => setShowAdvanced((v) => !v)}>
@@ -249,6 +318,21 @@ export function ConnectScreen({
           {device.isIOS && <p className="install-hint">{texts.installHint}</p>}
         </aside>
       </div>
+
+      {/* Chat-Overlay über der ganzen Verbindungsmaske: Wie in der laufenden
+          Sitzung (RemoteScreen) ein reiner Signaling-Kanal-Chat, der keine
+          Bildschirmverbindung voraussetzt. */}
+      {chatOpen && (
+        <div className="chat-overlay connect-chat-overlay">
+          <ChatPanel
+            messages={chatMessages}
+            onSend={sendChat}
+            onClose={closeChat}
+            error={chatError}
+            texts={texts}
+          />
+        </div>
+      )}
     </div>
   );
 }

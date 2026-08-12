@@ -14,6 +14,11 @@ import { generateHostId, generateHostPassword } from "./id";
 import { applyRemoteInputEvent, setInputDisplayId } from "./input-simulation";
 import { detectLanAddress } from "./lan-address";
 import {
+  loadSignalingServerFactory,
+  startEmbeddedSignaling,
+  type EmbeddedSignaling,
+} from "./embedded-signaling";
+import {
   IPC_CHANNELS,
   type AppInfo,
   type DesktopSource,
@@ -37,6 +42,9 @@ const hostId = generateHostId();
 let hostPassword = generateHostPassword();
 
 let mainWindow: BrowserWindow | null = null;
+
+// Signaling-Server, den die App selbst mitbringt (siehe embedded-signaling.ts).
+let signaling: EmbeddedSignaling | null = null;
 
 // App-Icon: In der Entwicklung liegt es im Projektordner unter build/icon.png,
 // im gepackten Build wird es (siehe electron-builder.yml "extraResources") in
@@ -84,8 +92,25 @@ function createWindow(): void {
   }
 }
 
+/**
+ * Startet den mitgelieferten Signaling-Server. Ohne ihn scheitert jede
+ * Freigabe mit "Konnte keine Verbindung zum Signaling-Server herstellen" —
+ * der Nutzer der fertigen App kann ihn nicht von Hand starten.
+ * Fehler sind nicht fatal: Ist z.B. eine andere Signaling-URL konfiguriert
+ * (eigener Server im LAN), läuft die App trotzdem weiter.
+ */
+async function startSignalingServer(): Promise<void> {
+  try {
+    signaling = await startEmbeddedSignaling(loadSignalingServerFactory());
+    console.log(`[signaling] ${signaling.mode} auf Port ${signaling.port}`);
+  } catch (err) {
+    console.error("[signaling] Start fehlgeschlagen:", err);
+  }
+}
+
 app.whenReady().then(() => {
   registerIpcHandlers();
+  void startSignalingServer();
 
   // Auf macOS wird das Dock-Icon im gepackten Build aus dem Info.plist
   // (build/icon.icns, von electron-builder eingebunden) übernommen; im
@@ -105,6 +130,12 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("will-quit", () => {
+  // Nur einen selbst gestarteten Server beenden (siehe startEmbeddedSignaling).
+  void signaling?.stop();
+  signaling = null;
 });
 
 function registerIpcHandlers(): void {

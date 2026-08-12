@@ -58,6 +58,8 @@ export interface MobileTexts {
   chatSend: string;
   chatYou: string;
   chatPartner: string;
+  chatConnect: string;
+  chatConnectError: string;
 }
 
 const de: MobileTexts = {
@@ -115,6 +117,8 @@ const de: MobileTexts = {
   chatSend: "Senden",
   chatYou: "Du",
   chatPartner: "Partner",
+  chatConnect: "Chat öffnen",
+  chatConnectError: "Chat nicht möglich. Läuft der Host mit dieser Partner-ID?",
 };
 
 const en: MobileTexts = {
@@ -172,6 +176,8 @@ const en: MobileTexts = {
   chatSend: "Send",
   chatYou: "You",
   chatPartner: "Partner",
+  chatConnect: "Open chat",
+  chatConnectError: "Chat unavailable. Is a host running with this partner ID?",
 };
 
 const zh: MobileTexts = {
@@ -229,6 +235,8 @@ const zh: MobileTexts = {
   chatSend: "发送",
   chatYou: "我",
   chatPartner: "对方",
+  chatConnect: "打开聊天",
+  chatConnectError: "无法聊天。该伙伴 ID 是否有主机在运行？",
 };
 
 const dictionaries: Record<Locale, MobileTexts> = { de, en, zh };

@@ -14,6 +14,16 @@ export interface ControllerSessionCallbacks {
   onError?: (message: string) => void;
 }
 
+export interface ControllerSessionOptions {
+  /**
+   * Nur-Chat-Modus: Es wird keine RTCPeerConnection aufgebaut (kein Video,
+   * keine Eingaben). Der Chat läuft über den Signaling-Kanal und funktioniert
+   * damit trotzdem. Genutzt von der Verbindungsmaske des Browser-Clients,
+   * damit dort „Chat öffnen" keine versteckte Bildschirmverbindung startet.
+   */
+  chatOnly?: boolean;
+}
+
 /**
  * Verwaltet den Controller-seitigen Zustand: Verbindungsaufbau zum
  * Signaling-Server, Beitritt zu einer Host-Session per (ID, Passwort),
@@ -31,6 +41,7 @@ export class ControllerSession {
     private hostId: string,
     private password: string,
     private callbacks: ControllerSessionCallbacks,
+    private options: ControllerSessionOptions = {},
   ) {
     this.signaling = new SignalingClient(signalingUrl);
   }
@@ -90,7 +101,9 @@ export class ControllerSession {
         this.callbacks.onRejected?.(msg.reason);
         break;
       case "join-accepted":
-        this.setupPeerConnection();
+        // Im Nur-Chat-Modus keine Peer-Verbindung aufbauen: Das Angebot des
+        // Hosts wird dann in handleSignal ignoriert (pc bleibt null).
+        if (!this.options.chatOnly) this.setupPeerConnection();
         break;
       case "signal":
         void this.handleSignal(msg.data);

@@ -58,7 +58,17 @@ dann erst beim ersten Eingabe-Event in der Konsole.
 
 ## Starten (Entwicklung)
 
-### 1. Signaling-Server starten
+### 1. Signaling-Server (startet automatisch mit der App)
+
+Die App bringt den Signaling-Server selbst mit: Beim Start lauscht sie auf
+`ws://localhost:8787` (`src/main/embedded-signaling.ts`). Für den Normalfall
+ist also **kein separates Terminal nötig** — ohne laufenden Server scheiterte
+die Freigabe früher mit „Konnte keine Verbindung zum Signaling-Server
+herstellen“. Läuft auf dem Port bereits ein Server, nutzt die App ihn mit und
+startet keinen zweiten.
+
+Eigenständig starten lässt er sich weiterhin, z.B. um ihn auf einem anderen
+Rechner im LAN zu betreiben:
 
 ```bash
 npm run signaling
@@ -136,11 +146,12 @@ Layout passt sich automatisch an (Phone/Tablet, Hoch-/Querformat) — siehe
 
 ### 1. Host + Server starten
 
-1. Signaling-Server starten (er liefert zugleich den Mobile-Client aus):
+1. Mobile-Client bauen — ausgeliefert wird er vom Signaling-Server, den die
+   Desktop-App beim Start automatisch mitstartet:
 
    ```bash
    npm run build:mobile   # einmalig bzw. nach Änderungen am Mobile-Client
-   npm run signaling
+   npm run signaling      # nur nötig, wenn die Desktop-App nicht läuft
    # Kurzform für beides: npm run serve:mobile
    ```
 

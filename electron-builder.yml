@@ -5,6 +5,11 @@ directories:
 files:
   - out/**/*
   - package.json
+  # Die App startet den Signaling-Server selbst (src/main/embedded-signaling.ts),
+  # daher muss er mitgepackt werden. dist/mobile ist der gebaute Mobile-Client,
+  # den dieser Server per HTTP ausliefert (vorher `npm run build:mobile`).
+  - src/signaling-server/**/*
+  - dist/mobile/**/*
 extraResources:
   # icon.png wird im ungepackten Fenster-Icon (BrowserWindow "icon"-Option,
   # siehe src/main/index.ts resolveIconPath()) zur Laufzeit referenziert.

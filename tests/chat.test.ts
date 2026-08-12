@@ -268,4 +268,73 @@ describe("Chat zwischen zwei Geräten", () => {
     expect(() => controller.sendChat("noch nicht verbunden")).not.toThrow();
     controller.disconnect();
   });
+
+  test("Chat-only-Sitzung vor dem Verbinden: danach funktioniert der normale Connect mit denselben Daten", async () => {
+    const hostId = freshHostId();
+    const password = "chat-only-dann-connect";
+    const hostInbox: Array<{ msg: ChatMessage; sessionId: string }> = [];
+    const errors: string[] = [];
+    const host = new HostSession(server.url, hostId, password, {
+      onChatMessage: (msg, sessionId) => hostInbox.push({ msg, sessionId }),
+      onError: (m) => errors.push(`host: ${m}`),
+    });
+    await host.start(new FakeMediaStream() as unknown as MediaStream);
+
+    // --- Phase 1: Chat-only, wie „Chat öffnen" auf der Verbindungsmaske ---
+    // Der Controller tritt bei und chattet, baut aber bewusst KEINE
+    // Peer-Verbindung auf (chatOnly: true) — kein Video, keine Eingaben.
+    let chatOnlyConnected = false;
+    let chatOnlyStream: unknown = null;
+    const chatOnly = new ControllerSession(server.url, hostId, password, {
+      onConnected: () => {
+        chatOnlyConnected = true;
+      },
+      onRemoteStream: (stream) => {
+        chatOnlyStream = stream;
+      },
+      onRejected: (r) => errors.push(`chat-only rejected: ${r}`),
+      onError: (m) => errors.push(`chat-only: ${m}`),
+    }, { chatOnly: true });
+    await chatOnly.connect();
+
+    const sent = chatOnly.sendChat("Nur kurz eine Frage, ohne zu verbinden");
+    await waitUntil(() => hostInbox.length === 1, "Chat-Nachricht beim Host");
+    expect(hostInbox[0].msg).toEqual(sent);
+
+    // Kern der Chat-only-Sitzung: Es entsteht KEINE Bildschirmverbindung.
+    expect(chatOnly.peerConnection).toBeNull();
+    expect(chatOnlyConnected).toBe(false);
+    expect(chatOnlyStream).toBeNull();
+
+    chatOnly.disconnect();
+    await waitUntil(() => host.chatPeerCount === 0, "Chat-only-Sitzung beendet");
+
+    // --- Phase 2: Normaler Connect mit denselben Zugangsdaten ---
+    let connected = false;
+    let streamReceived = false;
+    const controller = new ControllerSession(server.url, hostId, password, {
+      onConnected: () => {
+        connected = true;
+      },
+      onRemoteStream: () => {
+        streamReceived = true;
+      },
+      onChatMessage: (msg) => {
+        /* hier nicht benötigt */
+      },
+      onRejected: (r) => errors.push(`controller rejected: ${r}`),
+      onError: (m) => errors.push(`controller: ${m}`),
+    });
+    await controller.connect();
+    await waitUntil(() => connected && streamReceived, "Peer-Verbindung + Bildschirm nach Chat-only");
+
+    // Chat funktioniert in der neuen Sitzung weiterhin.
+    const after = controller.sendChat("Jetzt bin ich verbunden");
+    await waitUntil(() => hostInbox.length === 2, "Nachricht nach erneutem Verbinden");
+    expect(hostInbox[1].msg).toEqual(after);
+
+    controller.disconnect();
+    host.stop();
+    expect(errors).toEqual([]);
+  });
 });
