@@ -3,6 +3,7 @@ import { ConnectScreen } from "./components/ConnectScreen";
 import { RemoteScreen } from "./components/RemoteScreen";
 import { useDeviceClass } from "./hooks/useDeviceClass";
 import { useMobileSettings, useRecentHosts } from "./hooks/useMobileSettings";
+import { clearStoredSession, loadStoredSession, storeSession } from "./lib/session";
 import { detectLocale, storeLocale, textsFor, type Locale } from "./i18n";
 
 interface ActiveSession {
@@ -18,13 +19,19 @@ interface ActiveSession {
  * ein vom Host angezeigter QR-Code die Partner-ID (optional auch das
  * Passwort) direkt vorbelegen kann:
  *   http://<server>:8787/?id=482913607&pw=abc123
+ *
+ * Die laufende Sitzung wird im sessionStorage gesichert und beim Start sofort
+ * wiederhergestellt, damit ein Neuladen der Seite die Verbindung nicht
+ * abreißen lässt (siehe lib/session.ts).
  */
 export default function App(): JSX.Element {
   const device = useDeviceClass();
   const { settings, update } = useMobileSettings();
   const { recents, addRecent, removeRecent, clearRecents } = useRecentHosts();
   const [locale, setLocale] = useState<Locale>(detectLocale);
-  const [session, setSession] = useState<ActiveSession | null>(null);
+  // Direkt beim ersten Render aus dem sessionStorage lesen: So erscheint nach
+  // einem Neuladen sofort wieder die Sitzung statt kurz des Verbindungsformulars.
+  const [session, setSession] = useState<ActiveSession | null>(loadStoredSession);
   const [prefill, setPrefill] = useState<{ hostId: string; password: string }>({ hostId: "", password: "" });
 
   const texts = textsFor(locale);
@@ -57,10 +64,18 @@ export default function App(): JSX.Element {
   const handleConnect = useCallback(
     (hostId: string, password: string) => {
       addRecent(hostId);
+      storeSession({ hostId, password });
       setSession({ hostId, password });
     },
     [addRecent],
   );
+
+  // Trennen ist eine bewusste Entscheidung: Dann darf ein Neuladen die
+  // Verbindung auch nicht wiederherstellen.
+  const handleClose = useCallback(() => {
+    clearStoredSession();
+    setSession(null);
+  }, []);
 
   if (session) {
     return (
@@ -71,7 +86,7 @@ export default function App(): JSX.Element {
         onUpdateSettings={update}
         texts={texts}
         device={device}
-        onClose={() => setSession(null)}
+        onClose={handleClose}
       />
     );
   }

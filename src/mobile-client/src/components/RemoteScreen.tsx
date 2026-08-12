@@ -71,8 +71,18 @@ export function RemoteScreen({
   const [latencyMs, setLatencyMs] = useState(0);
   const [resolution, setResolution] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatVisible, setChatVisible] = useState(false);
+  // Der Chat ist von Anfang an sichtbar: Er läuft über den Signaling-Kanal und
+  // ist damit schon nutzbar, während der Bildschirm noch gar nicht ankommt.
+  // Vorher war er hinter dem 💬-Knopf verborgen und beim Start der App im
+  // Browser nicht zu sehen.
+  const [chatVisible, setChatVisible] = useState(true);
   const [unreadChat, setUnreadChat] = useState(0);
+
+  // Spiegelt `chatVisible` für den Sitzungs-Callback (siehe onChatMessage).
+  const chatVisibleRef = useRef(chatVisible);
+  useEffect(() => {
+    chatVisibleRef.current = chatVisible;
+  }, [chatVisible]);
 
   const sendInput = useCallback((evt: RemoteInputEvent) => {
     sessionRef.current?.sendInput(evt);
@@ -123,7 +133,10 @@ export function RemoteScreen({
       },
       onChatMessage: (msg) => {
         setChatMessages((prev) => [...prev, msg]);
-        setUnreadChat((n) => n + 1);
+        // Nur zählen, was der Nutzer nicht ohnehin gerade sieht. Über ein Ref,
+        // weil dieser Callback beim Sitzungsaufbau einmalig erzeugt wird und
+        // `chatVisible` sonst auf dem Startwert eingefroren bliebe.
+        if (!chatVisibleRef.current) setUnreadChat((n) => n + 1);
       },
       onConnected: () => setState("connected"),
       onDisconnected: () => setState("disconnected"),
