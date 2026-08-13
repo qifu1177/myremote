@@ -29,6 +29,7 @@ export const de: Translations = {
     waitingForConnection: "Warte auf Verbindung…",
     hint: "Jeder mit dieser ID und diesem Passwort kann sich mit diesem Gerät verbinden.",
     confirmIncomingConnection: "Ein Controller möchte sich verbinden. Verbindung zulassen?",
+    noPasswordNeeded: "Kein Passwort nötig",
   },
   connectCard: {
     title: "Verbindung herstellen",
@@ -41,6 +42,7 @@ export const de: Translations = {
     connecting: "Verbinde…",
     connect: "Verbinden",
     hint: "Gib die ID des Zielgeräts ein. Du wirst um das Passwort gebeten.",
+    passwordOptional: "Leer lassen, wenn das Zielgerät ohne Passwort freigibt.",
   },
   recentConnections: {
     title: "Letzte Verbindungen",
@@ -163,6 +165,9 @@ export const de: Translations = {
     randomPasswordOnStartHint: "Erzeugt beim Öffnen automatisch ein neues Passwort.",
     confirmEachConnection: "Zustimmung bei jeder Verbindung",
     confirmEachConnectionHint: "Verbindungen müssen manuell bestätigt werden.",
+    shareWithoutPassword: "Ohne Passwort freigeben",
+    shareWithoutPasswordHint:
+      "Zum Verbinden genügt die Partner-ID — es muss kein Passwort eingegeben werden. Achtung: Jeder, der die ID kennt, kann sich verbinden.",
     twoFactor: "Zwei-Faktor-Bestätigung",
     twoFactorHint: "Noch nicht eingerichtet.",
     displayTitle: "Bildübertragung",

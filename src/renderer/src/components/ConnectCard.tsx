@@ -21,7 +21,9 @@ export function ConnectCard({ onConnect, connecting, error, initialHostId }: Con
 
   function submit(e: React.FormEvent): void {
     e.preventDefault();
-    if (!hostId.trim() || !password.trim()) return;
+    // Das Passwort darf leer bleiben: Gibt der Host ohne Passwort frei
+    // (Settings -> Sicherheit), genügt die Partner-ID.
+    if (!hostId.trim()) return;
     onConnect(hostId.trim(), password.trim());
   }
 
@@ -59,6 +61,7 @@ export function ConnectCard({ onConnect, connecting, error, initialHostId }: Con
               {passwordVisible ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
             </button>
           </div>
+          <div className="card-hint">{t.connectCard.passwordOptional}</div>
         </div>
         <div className="connect-actions">
           <button type="submit" className="btn btn-primary btn-block" disabled={connecting}>

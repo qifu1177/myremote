@@ -95,7 +95,10 @@ function createSignalingServer(options = {}) {
       switch (msg.type) {
         case "register-host": {
           const hostId = normalizeId(msg.id);
-          if (!hostId || !msg.password) {
+          // Ein leeres Passwort ist erlaubt: Es bedeutet "Ohne Passwort
+          // freigeben" (Settings -> Sicherheit). Nur die ID ist Pflicht,
+          // ohne sie findet kein Controller den Host.
+          if (!hostId) {
             send(ws, { type: "register-failed", reason: "missing-id-or-password" });
             return;
           }
@@ -105,7 +108,7 @@ function createSignalingServer(options = {}) {
           }
           hosts.set(hostId, {
             ws,
-            password: String(msg.password),
+            password: msg.password == null ? "" : String(msg.password),
             controllers: new Map(),
           });
           state.role = "host";
@@ -123,7 +126,10 @@ function createSignalingServer(options = {}) {
             send(ws, { type: "join-rejected", reason: "host-not-found" });
             return;
           }
-          if (host.password !== String(msg.password)) {
+          // Ein Host, der ohne Passwort freigibt, nimmt jede Verbindung an —
+          // sonst käme niemand hinein, denn der Controller kennt kein
+          // Passwort, das er senden könnte.
+          if (host.password !== "" && host.password !== String(msg.password)) {
             send(ws, { type: "join-rejected", reason: "wrong-password" });
             log(`[signaling] rejected join for ${hostId}: wrong password`);
             return;

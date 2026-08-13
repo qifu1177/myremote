@@ -71,7 +71,9 @@ export function ConnectScreen({
   // Chat-Session sauber beenden, wenn die Seite verlassen wird.
   useEffect(() => () => chatSessionRef.current?.disconnect(), []);
 
-  const canConnect = hostId.replace(/\s/g, "").length > 0 && password.length > 0;
+  // Das Passwort darf leer bleiben: Gibt der Host ohne Passwort frei
+  // (Desktop-App, Settings -> Sicherheit), genügt die Partner-ID.
+  const canConnect = hostId.replace(/\s/g, "").length > 0;
 
   function submit(e: React.FormEvent): void {
     e.preventDefault();
@@ -191,6 +193,7 @@ export function ConnectScreen({
                 {showPassword ? "🙈" : "👁"}
               </button>
             </div>
+            <span className="field-hint">{texts.passwordOptional}</span>
           </label>
 
           <button type="submit" className="btn btn-primary btn-lg" disabled={!canConnect}>

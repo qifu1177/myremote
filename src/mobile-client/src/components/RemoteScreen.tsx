@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, RemoteInputEvent } from "@shared/types";
 import { ControllerSession } from "@renderer/lib/controllerSession";
+import { useFileTransfers } from "@renderer/hooks/useFileTransfers";
 import { TouchInputController, type TouchPoint } from "../lib/touchInput";
 import { MouseInputController } from "../lib/mouseInput";
 import { IDENTITY_VIEWPORT, normToPoint, type Viewport } from "../lib/viewport";
 import { KeyboardBar } from "./KeyboardBar";
 import { ChatPanel } from "./ChatPanel";
+import { FilePanel } from "./FilePanel";
 import {
   NO_MODIFIERS,
   keyEventFromBrowser,
@@ -77,6 +79,20 @@ export function RemoteScreen({
   // Browser nicht zu sehen.
   const [chatVisible, setChatVisible] = useState(true);
   const [unreadChat, setUnreadChat] = useState(0);
+  const [filesVisible, setFilesVisible] = useState(false);
+
+  // Dateien laufen — anders als der Chat — über den WebRTC-DataChannel und
+  // brauchen deshalb die stehende Peer-Verbindung. Derselbe Hook wie in der
+  // Desktop-App: Beide Sessions bieten dieselbe sendFile-Signatur.
+  const { transfers, callbacks: fileCallbacks, sendFiles } = useFileTransfers((file, onProgress) => {
+    const session = sessionRef.current;
+    if (!session) return Promise.reject(new Error(texts.filesWaitingForPeer));
+    return session.sendFile(file, onProgress);
+  });
+  // Die Sitzungs-Callbacks entstehen einmalig beim Verbindungsaufbau; über das
+  // Ref greifen sie trotzdem immer auf den aktuellen Stand zu.
+  const fileCallbacksRef = useRef(fileCallbacks);
+  fileCallbacksRef.current = fileCallbacks;
 
   // Spiegelt `chatVisible` für den Sitzungs-Callback (siehe onChatMessage).
   const chatVisibleRef = useRef(chatVisible);
@@ -138,6 +154,15 @@ export function RemoteScreen({
         // `chatVisible` sonst auf dem Startwert eingefroren bliebe.
         if (!chatVisibleRef.current) setUnreadChat((n) => n + 1);
       },
+      onIncomingFile: (meta) => {
+        fileCallbacksRef.current.onIncomingFile(meta);
+        // Eine eingehende Datei soll nicht unbemerkt bleiben.
+        setFilesVisible(true);
+      },
+      onIncomingFileProgress: (id, received, total) =>
+        fileCallbacksRef.current.onIncomingFileProgress(id, received, total),
+      onFileReceived: (file) => fileCallbacksRef.current.onFileReceived(file),
+      onFileAborted: (id, reason) => fileCallbacksRef.current.onFileAborted(id, reason),
       onConnected: () => setState("connected"),
       onDisconnected: () => setState("disconnected"),
       onRejected: (reason) => {
@@ -463,6 +488,21 @@ export function RemoteScreen({
             />
           </div>
         )}
+
+        {/* Aus demselben Grund wie der Chat außerhalb der Bühne: Die Bühne
+            fängt touchstart/mousedown mit preventDefault() ab, der
+            Dateiauswahl-Knopf bekäme dort keinen Tap. */}
+        {filesVisible && (
+          <div className="chat-overlay">
+            <FilePanel
+              transfers={transfers}
+              onSend={(files) => void sendFiles(files)}
+              onClose={() => setFilesVisible(false)}
+              disabled={state !== "connected"}
+              texts={texts}
+            />
+          </div>
+        )}
       </div>
 
       <footer className={`remote-bar bottom ${showControls ? "" : "hidden"}`}>
@@ -498,6 +538,16 @@ export function RemoteScreen({
             {unreadChat > 0 && <span className="chat-unread-dot" />}
           </span>
           <span className="action-label">{texts.chat}</span>
+        </button>
+        {/* Dateien brauchen — anders als der Chat — die stehende
+            Peer-Verbindung, laufen also nur bei aktiver Freigabe. */}
+        <button
+          type="button"
+          className={`action-btn ${filesVisible ? "active" : ""}`}
+          onClick={() => setFilesVisible((v) => !v)}
+        >
+          <span className="action-icon">📁</span>
+          <span className="action-label">{texts.files}</span>
         </button>
         <button
           type="button"

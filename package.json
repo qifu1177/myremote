@@ -20,7 +20,7 @@
     "serve:mobile": "npm run build:mobile && npm run signaling",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p src/mobile-client/tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps && node tools/dev-app-name.mjs"
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.0",

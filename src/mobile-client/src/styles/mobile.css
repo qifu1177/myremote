@@ -879,3 +879,101 @@ button {
     font-size: 12px;
   }
 }
+
+/* ---------------------------------------------------------- Dateien
+ * Liegt im selben Overlay wie der Chat (.chat-overlay), teilt sich deshalb
+ * dessen Kopfzeile (.chat-panel-head/-title). Anders als der Chat setzt die
+ * Übertragung eine stehende Peer-Verbindung voraus.
+ */
+.file-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-subtle);
+  padding-bottom: var(--safe-bottom);
+}
+
+.file-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.file-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.file-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.file-empty {
+  margin: auto 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.file-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.file-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.file-item-name {
+  font-size: 14px;
+  /* Lange Dateinamen dürfen das Panel nicht auseinanderziehen */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-item-size {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.file-progress {
+  height: 4px;
+  margin: 8px 0 6px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.file-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+.file-item-status {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.file-save-link {
+  color: var(--accent);
+  font-weight: 600;
+}

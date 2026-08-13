@@ -144,7 +144,10 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
   const ensureSession = useCallback(async (): Promise<HostSession | null> => {
     if (sessionRef.current) return sessionRef.current;
     if (!appInfo) return null;
-    const session = new HostSession(signalingUrl, appInfo.hostId, password ?? appInfo.hostPassword, {
+    // Leeres Passwort = "Ohne Passwort freigeben" (Settings -> Sicherheit).
+    // Der Signaling-Server lässt dann jeden Beitritt mit dieser ID zu.
+    const effectivePassword = securitySettings.shareWithoutPassword ? "" : (password ?? appInfo.hostPassword);
+    const session = new HostSession(signalingUrl, appInfo.hostId, effectivePassword, {
       onPeerConnected: (id) => setConnectedPeers((prev) => new Set(prev).add(id)),
       onPeerDisconnected: (id) =>
         setConnectedPeers((prev) => {
@@ -178,7 +181,20 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
     return session;
     // t/securitySettings werden bewusst über Refs bzw. beim Erzeugen gelesen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appInfo, signalingUrl, password]);
+  }, [appInfo, signalingUrl, password, securitySettings.shareWithoutPassword]);
+
+  // Das Passwort steckt in der Registrierung beim Signaling-Server. Wird "Ohne
+  // Passwort freigeben" umgeschaltet, muss eine bereits laufende (Chat-)Sitzung
+  // neu angemeldet werden — sonst gilt weiter die alte Registrierung. Während
+  // einer laufenden Freigabe bleibt sie unangetastet, genau wie beim
+  // Neu-Generieren des Passworts.
+  useEffect(() => {
+    if (sharing || !sessionRef.current) return;
+    sessionRef.current.stop();
+    sessionRef.current = null;
+    setChatPeers(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [securitySettings.shareWithoutPassword]);
 
   function sendChat(text: string): void {
     const sent = sessionRef.current?.sendChat(text);
@@ -253,9 +269,21 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
       </div>
       <div className="card-label">{t.hostCard.password}</div>
       <div className="id-row">
-        <span className="id-value" style={{ fontSize: 20, letterSpacing: "0.08em" }}>
-          {password ? (passwordVisible ? password : "•".repeat(password.length)) : "…"}
+        {/* Ohne Passwort freigeben: Es gibt nichts anzuzeigen, zu verbergen,
+            neu zu erzeugen oder zu kopieren — nur den Hinweis. */}
+        <span
+          className="id-value"
+          style={{ fontSize: securitySettings.shareWithoutPassword ? 15 : 20, letterSpacing: "0.08em" }}
+        >
+          {securitySettings.shareWithoutPassword
+            ? t.hostCard.noPasswordNeeded
+            : password
+              ? passwordVisible
+                ? password
+                : "•".repeat(password.length)
+              : "…"}
         </span>
+        {!securitySettings.shareWithoutPassword && (
         <div style={{ display: "flex", gap: 6 }}>
           <button
             className="id-copy-btn"
@@ -284,6 +312,7 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
             <CopyIcon size={14} />
           </button>
         </div>
+        )}
       </div>
 
       {permissions &&

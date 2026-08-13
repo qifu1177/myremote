@@ -60,6 +60,17 @@ export interface MobileTexts {
   chatPartner: string;
   chatConnect: string;
   chatConnectError: string;
+  /** Hinweis, dass das Passwortfeld leer bleiben darf (Host ohne Passwort). */
+  passwordOptional: string;
+  /** Dateiübertragung über den WebRTC-DataChannel. */
+  files: string;
+  filesEmpty: string;
+  filesChoose: string;
+  filesSave: string;
+  filesSent: string;
+  filesProgress: (percent: number) => string;
+  filesFailed: (reason: string) => string;
+  filesWaitingForPeer: string;
 }
 
 const de: MobileTexts = {
@@ -119,6 +130,15 @@ const de: MobileTexts = {
   chatPartner: "Partner",
   chatConnect: "Chat öffnen",
   chatConnectError: "Chat nicht möglich. Läuft der Host mit dieser Partner-ID?",
+  passwordOptional: "Leer lassen, wenn der Host ohne Passwort freigibt.",
+  files: "Dateien",
+  filesEmpty: "Noch keine Übertragungen.",
+  filesChoose: "Datei auswählen",
+  filesSave: "Speichern",
+  filesSent: "Gesendet",
+  filesProgress: (percent) => `${percent} % übertragen`,
+  filesFailed: (reason) => `Fehlgeschlagen: ${reason}`,
+  filesWaitingForPeer: "Dateien sind erst möglich, wenn die Bildschirmverbindung steht.",
 };
 
 const en: MobileTexts = {
@@ -178,6 +198,15 @@ const en: MobileTexts = {
   chatPartner: "Partner",
   chatConnect: "Open chat",
   chatConnectError: "Chat unavailable. Is a host running with this partner ID?",
+  passwordOptional: "Leave empty if the host shares without a password.",
+  files: "Files",
+  filesEmpty: "No transfers yet.",
+  filesChoose: "Choose file",
+  filesSave: "Save",
+  filesSent: "Sent",
+  filesProgress: (percent) => `${percent}% transferred`,
+  filesFailed: (reason) => `Failed: ${reason}`,
+  filesWaitingForPeer: "File transfer needs an established screen connection.",
 };
 
 const zh: MobileTexts = {
@@ -237,6 +266,15 @@ const zh: MobileTexts = {
   chatPartner: "对方",
   chatConnect: "打开聊天",
   chatConnectError: "无法聊天。该伙伴 ID 是否有主机在运行？",
+  passwordOptional: "如果主机无密码共享，请留空。",
+  files: "文件",
+  filesEmpty: "暂无传输。",
+  filesChoose: "选择文件",
+  filesSave: "保存",
+  filesSent: "已发送",
+  filesProgress: (percent) => `已传输 ${percent}%`,
+  filesFailed: (reason) => `失败：${reason}`,
+  filesWaitingForPeer: "需要先建立屏幕连接才能传输文件。",
 };
 
 const dictionaries: Record<Locale, MobileTexts> = { de, en, zh };

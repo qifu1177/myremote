@@ -29,6 +29,8 @@ export interface Translations {
     waitingForConnection: string;
     hint: string;
     confirmIncomingConnection: string;
+    /** Statt der Passwort-Punkte, wenn ohne Passwort freigegeben wird. */
+    noPasswordNeeded: string;
   };
   connectCard: {
     title: string;
@@ -41,6 +43,8 @@ export interface Translations {
     connecting: string;
     connect: string;
     hint: string;
+    /** Hinweis, dass das Feld leer bleiben darf (Host ohne Passwort). */
+    passwordOptional: string;
   };
   recentConnections: {
     title: string;
@@ -163,6 +167,8 @@ export interface Translations {
     randomPasswordOnStartHint: string;
     confirmEachConnection: string;
     confirmEachConnectionHint: string;
+    shareWithoutPassword: string;
+    shareWithoutPasswordHint: string;
     twoFactor: string;
     twoFactorHint: string;
     displayTitle: string;

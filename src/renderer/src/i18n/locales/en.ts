@@ -29,6 +29,7 @@ export const en: Translations = {
     waitingForConnection: "Waiting for connection…",
     hint: "Anyone with this ID and password can connect to this device.",
     confirmIncomingConnection: "A controller wants to connect. Allow this connection?",
+    noPasswordNeeded: "No password required",
   },
   connectCard: {
     title: "Establish connection",
@@ -41,6 +42,7 @@ export const en: Translations = {
     connecting: "Connecting…",
     connect: "Connect",
     hint: "Enter the ID of the target device. You will be asked for the password.",
+    passwordOptional: "Leave empty if the target device shares without a password.",
   },
   recentConnections: {
     title: "Recent connections",
@@ -163,6 +165,9 @@ export const en: Translations = {
     randomPasswordOnStartHint: "Automatically generates a new password when opening the app.",
     confirmEachConnection: "Confirmation for every connection",
     confirmEachConnectionHint: "Connections must be confirmed manually.",
+    shareWithoutPassword: "Share without password",
+    shareWithoutPasswordHint:
+      "The partner ID alone is enough to connect — no password needed. Caution: anyone who knows the ID can connect.",
     twoFactor: "Two-factor confirmation",
     twoFactorHint: "Not set up yet.",
     displayTitle: "Video transmission",

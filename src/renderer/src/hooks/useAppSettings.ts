@@ -9,6 +9,12 @@ export interface AppSettings {
     randomPasswordOnStart: boolean;
     /** Jede eingehende Verbindung muss am Host manuell bestätigt werden. */
     confirmEachConnection: boolean;
+    /**
+     * Bildschirm ohne Passwort freigeben: Der Host meldet sich mit leerem
+     * Passwort an, der Controller braucht dann nur noch die Partner-ID.
+     * Standard: aus — ohne Passwort kann jeder mitschauen, der die ID kennt.
+     */
+    shareWithoutPassword: boolean;
   };
   display: {
     quality: StreamQuality;
@@ -27,6 +33,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   security: {
     randomPasswordOnStart: true,
     confirmEachConnection: true,
+    shareWithoutPassword: false,
   },
   display: {
     quality: "balanced",

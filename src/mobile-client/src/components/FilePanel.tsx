@@ -1,25 +1,31 @@
-import { useRef, useState } from "react";
-import type { FileTransferItem } from "../hooks/useFileTransfers";
-import { formatBytes } from "../lib/fileTransfer";
-import { useTranslation } from "../i18n";
+import { useRef } from "react";
+import type { FileTransferItem } from "@renderer/hooks/useFileTransfers";
+import { formatBytes } from "@renderer/lib/fileTransfer";
+import type { MobileTexts } from "../i18n";
 
-interface FileTransferPanelProps {
+interface FilePanelProps {
   transfers: FileTransferItem[];
-  /** Übergibt die ausgewählten/abgelegten Dateien an die Sitzung. */
+  /** Übergibt die ausgewählten Dateien an die Sitzung. */
   onSend: (files: File[]) => void;
-  /** false, wenn (noch) keine Gegenstelle Dateien empfangen kann. */
+  onClose: () => void;
+  /** true, solange keine Gegenstelle Dateien empfangen kann. */
   disabled?: boolean;
+  texts: MobileTexts;
 }
 
 /**
- * Dateiübertragung zwischen Host und Controller. Die Dateien laufen über einen
- * eigenen WebRTC-DataChannel, deshalb ist das Panel erst nutzbar, wenn die
- * Peer-Verbindung steht (anders als der Chat).
+ * Dateiübertragung des Browser-Clients.
+ *
+ * Anders als der Chat (Signaling-Relay) laufen Dateien über den eigenen
+ * WebRTC-DataChannel `myremote-files`. Das Panel ist deshalb erst nutzbar,
+ * wenn die Peer-Verbindung steht.
+ *
+ * Bewusst ohne Drag-and-drop-Zone (im Gegensatz zur Desktop-Variante): Auf
+ * Touch-Geräten gibt es nichts zu ziehen, dort öffnet der Knopf die
+ * System-Dateiauswahl bzw. direkt Fotos/iCloud Drive.
  */
-export function FileTransferPanel({ transfers, onSend, disabled = false }: FileTransferPanelProps): JSX.Element {
-  const t = useTranslation();
+export function FilePanel({ transfers, onSend, onClose, disabled = false, texts }: FilePanelProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [dragOver, setDragOver] = useState(false);
 
   function pick(files: FileList | null): void {
     const list = files ? Array.from(files) : [];
@@ -27,47 +33,41 @@ export function FileTransferPanel({ transfers, onSend, disabled = false }: FileT
   }
 
   return (
-    <div className="file-panel">
-      <div className="file-panel-title">{t.fileTransfer.title}</div>
-      <div
-        className={`file-dropzone ${dragOver ? "over" : ""} ${disabled ? "disabled" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          if (!disabled) setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-          if (!disabled) pick(e.dataTransfer.files);
-        }}
-      >
-        <div className="file-dropzone-text">{t.fileTransfer.dropHint}</div>
+    <section className="file-panel" aria-label={texts.files}>
+      <header className="chat-panel-head">
+        <span className="chat-panel-title">{texts.files}</span>
+        <button type="button" className="btn btn-ghost" onClick={onClose}>
+          {texts.close}
+        </button>
+      </header>
+
+      <div className="file-actions">
         <button
-          className="btn btn-secondary"
           type="button"
+          className="btn btn-primary btn-lg"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
         >
-          {t.fileTransfer.choose}
+          {texts.filesChoose}
         </button>
         <input
           ref={inputRef}
           type="file"
           multiple
           hidden
-          aria-label={t.fileTransfer.choose}
+          aria-label={texts.filesChoose}
           onChange={(e) => {
             pick(e.target.files);
             // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
             e.target.value = "";
           }}
         />
+        {disabled && <p className="file-hint">{texts.filesWaitingForPeer}</p>}
       </div>
 
       <div className="file-list">
         {transfers.length === 0 ? (
-          <div className="file-empty">{t.fileTransfer.empty}</div>
+          <p className="file-empty">{texts.filesEmpty}</p>
         ) : (
           transfers.map((item) => {
             const percent = item.size === 0 ? 100 : Math.round((item.transferred / item.size) * 100);
@@ -85,15 +85,15 @@ export function FileTransferPanel({ transfers, onSend, disabled = false }: FileT
                   </div>
                 )}
                 <div className="file-item-status">
-                  {item.status === "active" && t.fileTransfer.progress(percent)}
-                  {item.status === "failed" && t.fileTransfer.failed(item.error ?? "")}
+                  {item.status === "active" && texts.filesProgress(percent)}
+                  {item.status === "failed" && texts.filesFailed(item.error ?? "")}
                   {item.status === "done" &&
                     (item.url ? (
                       <a className="file-save-link" href={item.url} download={item.name}>
-                        {t.fileTransfer.save}
+                        {texts.filesSave}
                       </a>
                     ) : (
-                      t.fileTransfer.sent
+                      texts.filesSent
                     ))}
                 </div>
               </div>
@@ -101,7 +101,6 @@ export function FileTransferPanel({ transfers, onSend, disabled = false }: FileT
           })
         )}
       </div>
-      {disabled && <div className="file-hint">{t.fileTransfer.waitingForPeer}</div>}
-    </div>
+    </section>
   );
 }

@@ -29,6 +29,7 @@ export const zh: Translations = {
     waitingForConnection: "等待连接…",
     hint: "任何拥有此 ID 和密码的人都可以连接到此设备。",
     confirmIncomingConnection: "有一个控制端想要连接。是否允许此连接？",
+    noPasswordNeeded: "无需密码",
   },
   connectCard: {
     title: "建立连接",
@@ -41,6 +42,7 @@ export const zh: Translations = {
     connecting: "连接中…",
     connect: "连接",
     hint: "输入目标设备的 ID，系统会要求您输入密码。",
+    passwordOptional: "如果目标设备无密码共享，请留空。",
   },
   recentConnections: {
     title: "最近的连接",
@@ -160,6 +162,8 @@ export const zh: Translations = {
     randomPasswordOnStartHint: "打开时自动生成新密码。",
     confirmEachConnection: "每次连接均需确认",
     confirmEachConnectionHint: "连接必须手动确认。",
+    shareWithoutPassword: "无密码共享",
+    shareWithoutPasswordHint: "仅凭对方 ID 即可连接，无需输入密码。注意：任何知道该 ID 的人都能连接。",
     twoFactor: "双重验证",
     twoFactorHint: "尚未设置。",
     displayTitle: "画面传输",

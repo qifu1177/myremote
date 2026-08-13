@@ -27,7 +27,9 @@ export function loadStoredSession(): StoredSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<StoredSession>;
     if (typeof parsed?.hostId !== "string" || typeof parsed?.password !== "string") return null;
-    if (!parsed.hostId || !parsed.password) return null;
+    // Ein leeres Passwort ist eine gültige Sitzung: Der Host kann ohne
+    // Passwort freigeben. Ohne ID gibt es dagegen nichts wiederherzustellen.
+    if (!parsed.hostId) return null;
     return { hostId: parsed.hostId, password: parsed.password };
   } catch {
     return null;

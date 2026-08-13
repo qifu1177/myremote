@@ -43,6 +43,25 @@ export interface FileSenderOptions {
 /** Fortschritt in bereits übertragenen Bytes. */
 export type ProgressCallback = (sentBytes: number, totalBytes: number) => void;
 
+/**
+ * Kompakte, lesbare Größenangabe (B/KB/MB/GB).
+ *
+ * Liegt hier statt in der Desktop-Anzeige, weil der Browser-Client dieselbe
+ * Formatierung braucht: Würde er sie aus FileTransferPanel.tsx importieren,
+ * zöge er dessen Desktop-i18n (alle drei Sprachen) in sein Bundle.
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`;
+}
+
 function newTransferId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

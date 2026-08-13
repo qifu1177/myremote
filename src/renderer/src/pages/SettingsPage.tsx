@@ -120,6 +120,17 @@ export function SettingsPage({
               </div>
               <div className="switch-row">
                 <div>
+                  <div className="switch-row-label">{t.settingsPage.shareWithoutPassword}</div>
+                  <div className="switch-row-hint">{t.settingsPage.shareWithoutPasswordHint}</div>
+                </div>
+                <Switch
+                  checked={settings.security.shareWithoutPassword}
+                  onChange={(next) => onUpdateSecurity({ shareWithoutPassword: next })}
+                  label={t.settingsPage.shareWithoutPassword}
+                />
+              </div>
+              <div className="switch-row">
+                <div>
                   <div className="switch-row-label">{t.settingsPage.twoFactor}</div>
                   <div className="switch-row-hint">{t.settingsPage.twoFactorHint}</div>
                 </div>
