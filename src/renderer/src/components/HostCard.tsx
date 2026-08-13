@@ -127,6 +127,19 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
+  /**
+   * Solange freigegeben wird, darf der Rechner nicht einschlafen: macOS zählt
+   * die Leerlaufzeit nur über physische Eingaben, ferngesteuerte zählen nicht
+   * mit. Ohne die Sperre endete die Verbindung nach ~10 Minuten ohne Steuerung
+   * von selbst (Details in main/stay-awake.ts). Die Aufräumfunktion greift auch
+   * beim Verlassen der Seite — sonst bliebe der Mac dauerhaft wach.
+   */
+  useEffect(() => {
+    if (!sharing) return;
+    window.myremote.setStayAwake(true);
+    return () => window.myremote.setStayAwake(false);
+  }, [sharing]);
+
   /** Beim Verlassen der Seite alles abbauen (auch die Chat-Sitzung). */
   useEffect(
     () => () => {

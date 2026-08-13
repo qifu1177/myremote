@@ -4,6 +4,7 @@ import {
   desktopCapturer,
   ipcMain,
   nativeImage,
+  powerSaveBlocker,
   screen,
   shell,
   systemPreferences,
@@ -13,6 +14,7 @@ import { is } from "./is";
 import { generateHostId, generateHostPassword } from "./id";
 import { applyRemoteInputEvent, setInputDisplayId } from "./input-simulation";
 import { detectLanAddress } from "./lan-address";
+import { createStayAwake } from "./stay-awake";
 import {
   loadSignalingServerFactory,
   startEmbeddedSignaling,
@@ -45,6 +47,9 @@ let mainWindow: BrowserWindow | null = null;
 
 // Signaling-Server, den die App selbst mitbringt (siehe embedded-signaling.ts).
 let signaling: EmbeddedSignaling | null = null;
+
+// Schlafsperre für die Dauer der Freigabe (siehe stay-awake.ts).
+const stayAwake = createStayAwake(powerSaveBlocker);
 
 // App-Icon: In der Entwicklung liegt es im Projektordner unter build/icon.png,
 // im gepackten Build wird es (siehe electron-builder.yml "extraResources") in
@@ -136,6 +141,7 @@ app.on("will-quit", () => {
   // Nur einen selbst gestarteten Server beenden (siehe startEmbeddedSignaling).
   void signaling?.stop();
   signaling = null;
+  stayAwake.set(false);
 });
 
 function registerIpcHandlers(): void {
@@ -214,5 +220,9 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.regenerateHostPassword, (): string => {
     hostPassword = generateHostPassword();
     return hostPassword;
+  });
+
+  ipcMain.on(IPC_CHANNELS.setStayAwake, (_event, active: boolean) => {
+    stayAwake.set(active);
   });
 }

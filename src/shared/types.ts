@@ -213,6 +213,8 @@ export const IPC_CHANNELS = {
   getPermissions: "permissions:get",
   openPrivacySettings: "permissions:open-settings",
   regenerateHostPassword: "app:regenerate-host-password",
+  /** Hält den Rechner während der Freigabe wach (siehe main/stay-awake.ts). */
+  setStayAwake: "power:set-stay-awake",
 } as const;
 
 export const DATA_CHANNEL_LABEL = "myremote-input";

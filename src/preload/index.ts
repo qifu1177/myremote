@@ -18,6 +18,7 @@ const api = {
   setInputDisplay: (displayId: string | null): void =>
     ipcRenderer.send(IPC_CHANNELS.setInputDisplay, displayId),
   regenerateHostPassword: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.regenerateHostPassword),
+  setStayAwake: (active: boolean): void => ipcRenderer.send(IPC_CHANNELS.setStayAwake, active),
 };
 
 export type MyRemoteApi = typeof api;
