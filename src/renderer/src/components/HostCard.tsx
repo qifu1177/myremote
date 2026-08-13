@@ -5,9 +5,11 @@ import { captureDesktopStream } from "../lib/screenCapture";
 import { missingPermissions } from "../lib/permissions";
 import { StatusBadge } from "./StatusBadge";
 import { ChatPanel } from "./ChatPanel";
+import { FileTransferPanel } from "./FileTransferPanel";
 import { useTranslation } from "../i18n";
+import { useFileTransfers } from "../hooks/useFileTransfers";
 import type { AppSettings } from "../hooks/useAppSettings";
-import { ChatIcon, CopyIcon, EyeIcon, EyeOffIcon, RefreshIcon } from "./icons";
+import { ChatIcon, CopyIcon, EyeIcon, EyeOffIcon, FolderIcon, RefreshIcon } from "./icons";
 
 interface HostCardProps {
   appInfo: AppInfo | null;
@@ -34,8 +36,19 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
   const [unreadChat, setUnreadChat] = useState(0);
   /** Wie viele Controller aktuell per Chat erreichbar sind (auch ohne Peer-Verbindung). */
   const [chatPeers, setChatPeers] = useState(0);
+  const [filesOpen, setFilesOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionRef = useRef<HostSession | null>(null);
+
+  const { transfers, callbacks: fileCallbacks, sendFiles } = useFileTransfers((file, onProgress) => {
+    const session = sessionRef.current;
+    if (!session) return Promise.reject(new Error(t.fileTransfer.waitingForPeer));
+    return session.sendFile(file, onProgress);
+  });
+  // ensureSession erzeugt die Callbacks einmalig als Closure — über die Ref
+  // greifen sie trotzdem immer auf den aktuellen Stand zu.
+  const fileCallbacksRef = useRef(fileCallbacks);
+  fileCallbacksRef.current = fileCallbacks;
   // Ref statt direktem State-Zugriff im Callback, da confirmIncomingConnection
   // als Closure beim Sitzungsstart erzeugt wird und spätere Settings-Änderungen
   // (während einer laufenden Freigabe) trotzdem berücksichtigt werden sollen.
@@ -146,6 +159,14 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
         setChatOpen(true);
       },
       onChatPeersChanged: setChatPeers,
+      onIncomingFile: (meta) => {
+        fileCallbacksRef.current.onIncomingFile(meta);
+        setFilesOpen(true);
+      },
+      onIncomingFileProgress: (id, received, total) =>
+        fileCallbacksRef.current.onIncomingFileProgress(id, received, total),
+      onFileReceived: (file) => fileCallbacksRef.current.onFileReceived(file),
+      onFileAborted: (id, reason) => fileCallbacksRef.current.onFileAborted(id, reason),
       onError: (msg) => setError(msg),
       confirmIncomingConnection: () =>
         Promise.resolve(
@@ -345,8 +366,21 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
           <ChatIcon size={17} />
           {unreadChat > 0 && <span className="chat-unread-dot" />}
         </button>
+        {/* Dateien brauchen — anders als der Chat — die stehende
+            Peer-Verbindung, laufen also nur bei aktiver Freigabe. */}
+        <button
+          type="button"
+          className={`toolbar-icon-btn ${filesOpen ? "active" : ""}`}
+          title={filesOpen ? t.fileTransfer.close : t.fileTransfer.open}
+          onClick={() => setFilesOpen((v) => !v)}
+        >
+          <FolderIcon size={17} />
+        </button>
       </div>
       {chatOpen && <ChatPanel messages={chatMessages} selfRole="host" onSend={sendChat} disabled={chatPeers === 0} />}
+      {filesOpen && (
+        <FileTransferPanel transfers={transfers} onSend={sendFiles} disabled={connectedPeers.size === 0} />
+      )}
 
       <div className="card-hint">{t.hostCard.hint}</div>
     </div>

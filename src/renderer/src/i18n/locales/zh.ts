@@ -76,7 +76,6 @@ export const zh: Translations = {
     chat: "聊天",
     fullscreen: "全屏",
     exitFullscreen: "退出全屏",
-    featureNotAvailable: "该功能尚不可用。",
     connectionInfo: (resolution, latencyMs) => `${resolution} · ${latencyMs}ms · AES-256`,
   },
   connectPage: {
@@ -94,6 +93,19 @@ export const zh: Translations = {
     unread: (count) => `聊天（${count} 条新消息）`,
     open: "打开聊天",
     close: "关闭聊天",
+  },
+  fileTransfer: {
+    title: "文件传输",
+    empty: "尚未传输任何文件。",
+    dropHint: "将文件拖到此处",
+    choose: "选择文件",
+    save: "保存",
+    sent: "已发送",
+    progress: (percent) => `${percent}%`,
+    failed: (reason) => `失败：${reason}`,
+    waitingForPeer: "只有在连接建立后才能传输文件。",
+    open: "打开文件传输",
+    close: "关闭文件传输",
   },
   mobileAccess: {
     title: "使用平板或手机控制",

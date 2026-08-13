@@ -76,7 +76,6 @@ export const de: Translations = {
     chat: "Chat",
     fullscreen: "Vollbild",
     exitFullscreen: "Vollbild verlassen",
-    featureNotAvailable: "Diese Funktion ist noch nicht verfügbar.",
     connectionInfo: (resolution, latencyMs) => `${resolution} · ${latencyMs}ms · AES-256`,
   },
   connectPage: {
@@ -94,6 +93,19 @@ export const de: Translations = {
     unread: (count) => `Chat (${count} neu)`,
     open: "Chat öffnen",
     close: "Chat schließen",
+  },
+  fileTransfer: {
+    title: "Dateiübertragung",
+    empty: "Noch keine Dateien übertragen.",
+    dropHint: "Dateien hierher ziehen",
+    choose: "Dateien wählen",
+    save: "Speichern",
+    sent: "Gesendet",
+    progress: (percent) => `${percent} %`,
+    failed: (reason) => `Fehlgeschlagen: ${reason}`,
+    waitingForPeer: "Dateien können erst übertragen werden, sobald die Verbindung steht.",
+    open: "Dateiübertragung öffnen",
+    close: "Dateiübertragung schließen",
   },
   mobileAccess: {
     title: "Vom Tablet oder Handy steuern",

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage, RemoteInputEvent } from "@shared/types";
 import { ControllerSession } from "../lib/controllerSession";
 import { StatusBadge } from "./StatusBadge";
 import { ChatPanel } from "./ChatPanel";
+import { FileTransferPanel } from "./FileTransferPanel";
 import { useTranslation } from "../i18n";
+import { useFileTransfers, type SendFile } from "../hooks/useFileTransfers";
 import type { AppSettings } from "../hooks/useAppSettings";
 import { ChatIcon, ExpandIcon, FolderIcon } from "./icons";
 
@@ -33,6 +35,20 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [unreadChat, setUnreadChat] = useState(0);
 
+  const sendFile = useCallback<SendFile>(
+    (file, onProgress) => {
+      const session = sessionRef.current;
+      if (!session) return Promise.reject(new Error(t.remoteView.disconnected));
+      return session.sendFile(file, onProgress);
+    },
+    [t],
+  );
+  const { transfers, callbacks: fileCallbacks, sendFiles } = useFileTransfers(sendFile);
+  // Die Session wird nur einmal aufgebaut; die Datei-Callbacks müssen dabei
+  // immer die aktuellen sein (sie hängen an State-Settern).
+  const fileCallbacksRef = useRef(fileCallbacks);
+  fileCallbacksRef.current = fileCallbacks;
+
   useEffect(() => {
     const session = new ControllerSession(signalingUrl, hostId, password, {
       onRemoteStream: (stream) => {
@@ -45,6 +61,11 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
         setChatMessages((prev) => [...prev, msg]);
         setUnreadChat((n) => n + 1);
       },
+      onIncomingFile: (meta) => fileCallbacksRef.current.onIncomingFile(meta),
+      onIncomingFileProgress: (id, received, total) =>
+        fileCallbacksRef.current.onIncomingFileProgress(id, received, total),
+      onFileReceived: (file) => fileCallbacksRef.current.onFileReceived(file),
+      onFileAborted: (id, reason) => fileCallbacksRef.current.onFileAborted(id, reason),
       onConnected: () => setState("connected"),
       onDisconnected: () => setState("disconnected"),
       onRejected: (reason) => {
@@ -232,8 +253,10 @@ export function RemoteView({ hostId, password, signalingUrl, displaySettings, on
           <div className="remote-stage-info">{t.remoteView.connectionInfo(resolution, latencyMs)}</div>
         )}
         {panel === "files" && (
-          <div className="settings-inline" style={{ position: "absolute", right: 16, top: 16, background: "var(--bg-card)", padding: 16, borderRadius: 10, maxWidth: 260 }}>
-            {t.remoteView.featureNotAvailable}
+          <div className="remote-side-overlay">
+            {/* Dateien laufen über einen eigenen DataChannel und brauchen
+                deshalb — anders als der Chat — die stehende Peer-Verbindung. */}
+            <FileTransferPanel transfers={transfers} onSend={sendFiles} disabled={state !== "connected"} />
           </div>
         )}
         {panel === "chat" && (

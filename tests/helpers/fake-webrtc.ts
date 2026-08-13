@@ -23,17 +23,25 @@
 /** Ein per WebRTC ausgetauschter Datenkanal. */
 export class FakeDataChannel {
   readyState: "connecting" | "open" | "closed" = "connecting";
-  onmessage: ((ev: { data: string }) => void) | null = null;
+  /** Wie im echten Kanal: entscheidet, wie Binärdaten zugestellt werden. */
+  binaryType = "blob";
+  /** Noch nicht abgesendete Bytes — der Dateiversand pausiert daran. */
+  bufferedAmount = 0;
+  onmessage: ((ev: { data: string | ArrayBuffer }) => void) | null = null;
   onopen: (() => void) | null = null;
   /** Gegenstelle; wird beim Verhandeln gesetzt. */
   peer: FakeDataChannel | null = null;
 
   constructor(readonly label: string) {}
 
-  send(data: string): void {
+  send(data: string | ArrayBuffer): void {
     if (this.readyState !== "open") throw new Error(`DataChannel "${this.label}" ist nicht offen`);
+    if (typeof data !== "string") this.bufferedAmount += data.byteLength;
     // Zustellung asynchron, wie im echten Netzwerk.
-    queueMicrotask(() => this.peer?.onmessage?.({ data }));
+    queueMicrotask(() => {
+      if (typeof data !== "string") this.bufferedAmount -= data.byteLength;
+      this.peer?.onmessage?.({ data });
+    });
   }
 
   open(): void {

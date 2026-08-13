@@ -1,13 +1,23 @@
 import type { ChatMessage, RemoteInputEvent, SignalPayload } from "@shared/types";
-import { DATA_CHANNEL_LABEL } from "@shared/types";
+import { DATA_CHANNEL_LABEL, FILE_CHANNEL_LABEL } from "@shared/types";
 import { SignalingClient } from "./signalingClient";
 import { createChatMessage } from "./chatMessage";
+import { FileReceiver, FileSender } from "./fileTransfer";
+import type { FileSource, IncomingFileMeta, ProgressCallback, ReceivedFile } from "./fileTransfer";
 import { RTC_CONFIG } from "./rtcConfig";
 
 export interface ControllerSessionCallbacks {
   onRemoteStream?: (stream: MediaStream) => void;
   /** Eingehende Chat-Nachricht des Hosts (auch vor dem WebRTC-Aufbau). */
   onChatMessage?: (message: ChatMessage) => void;
+  /** Der Host beginnt, eine Datei zu senden. */
+  onIncomingFile?: (meta: IncomingFileMeta) => void;
+  /** Fortschritt einer eingehenden Datei in Bytes. */
+  onIncomingFileProgress?: (id: string, receivedBytes: number, totalBytes: number) => void;
+  /** Eine Datei wurde vollständig empfangen. */
+  onFileReceived?: (file: ReceivedFile) => void;
+  /** Eine eingehende Datei wurde abgebrochen/kam unvollständig an. */
+  onFileAborted?: (id: string, reason: string) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
   onRejected?: (reason: string) => void;
@@ -35,6 +45,8 @@ export class ControllerSession {
   private signaling: SignalingClient;
   private pc: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
+  /** Eigener Kanal für Dateien (siehe FILE_CHANNEL_LABEL). */
+  private fileChannel: RTCDataChannel | null = null;
 
   constructor(
     private signalingUrl: string,
@@ -78,6 +90,28 @@ export class ControllerSession {
     return message;
   }
 
+  /** true, sobald Dateien tatsächlich zum Host übertragen werden können. */
+  get canSendFiles(): boolean {
+    return this.fileChannel?.readyState === "open";
+  }
+
+  /** Label des ausgehandelten Dateikanals (für Diagnose/Tests). */
+  get fileChannelLabel(): string | null {
+    return this.fileChannel?.label ?? null;
+  }
+
+  /**
+   * Sendet eine Datei an den Host. Löst auf, sobald sie vollständig
+   * abgegeben wurde.
+   */
+  async sendFile(file: FileSource, onProgress?: ProgressCallback): Promise<void> {
+    const channel = this.fileChannel;
+    if (!channel || channel.readyState !== "open") {
+      throw new Error("Keine Verbindung zum Host: Datei kann nicht gesendet werden");
+    }
+    await new FileSender(channel).send(file, onProgress);
+  }
+
   /** true, sobald Eingaben tatsächlich zum Host übertragen werden können. */
   isInputChannelOpen(): boolean {
     return this.dataChannel?.readyState === "open";
@@ -88,8 +122,24 @@ export class ControllerSession {
     return this.dataChannel?.label ?? null;
   }
 
+  /** Verdrahtet den Empfänger für vom Host gesendete Dateien. */
+  private attachFileReceiver(channel: RTCDataChannel): RTCDataChannel {
+    // Ohne diese Einstellung liefert der Browser Binärdaten als Blob — der
+    // Empfänger erwartet ArrayBuffer.
+    channel.binaryType = "arraybuffer";
+    const receiver = new FileReceiver({
+      onStart: (meta) => this.callbacks.onIncomingFile?.(meta),
+      onProgress: (id, received, total) => this.callbacks.onIncomingFileProgress?.(id, received, total),
+      onComplete: (file) => this.callbacks.onFileReceived?.(file),
+      onAborted: (id, reason) => this.callbacks.onFileAborted?.(id, reason),
+    });
+    channel.onmessage = (m) => receiver.handleMessage(m.data);
+    return channel;
+  }
+
   disconnect(): void {
     this.dataChannel = null;
+    this.fileChannel = null;
     this.pc?.close();
     this.pc = null;
     this.signaling.close();
@@ -124,8 +174,11 @@ export class ControllerSession {
     // erzeugter Kanal würde nie geöffnet, da das Answer-SDP keine neue
     // "m=application"-Sektion hinzufügen kann.
     pc.ondatachannel = (ev) => {
-      if (ev.channel.label !== DATA_CHANNEL_LABEL) return;
-      this.dataChannel = ev.channel;
+      if (ev.channel.label === DATA_CHANNEL_LABEL) {
+        this.dataChannel = ev.channel;
+      } else if (ev.channel.label === FILE_CHANNEL_LABEL) {
+        this.fileChannel = this.attachFileReceiver(ev.channel);
+      }
     };
 
     pc.ontrack = (ev) => {

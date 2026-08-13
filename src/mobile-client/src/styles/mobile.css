@@ -145,8 +145,11 @@ button {
 
 /* Chat-Overlay auf der Verbindungsmaske: fixed, damit es auch dann den ganzen
  * sichtbaren Bereich abdeckt, wenn die Seite gescrollt ist (absolute wäre an
- * den Content-Anfang des scrollenden Containers gebunden). */
-.connect-chat-overlay {
+ * den Content-Anfang des scrollenden Containers gebunden).
+ * Beide Klassen zusammen (.chat-overlay.connect-chat-overlay), damit diese
+ * Regel die weiter unten stehende `.chat-overlay { position: absolute }`
+ * sicher überbietet — bei gleicher Spezifität gewinnt sonst die spätere. */
+.chat-overlay.connect-chat-overlay {
   position: fixed;
 }
 

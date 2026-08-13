@@ -131,6 +131,31 @@ export type RemoteInputEvent =
     };
 
 // ---------------------------------------------------------------------------
+// Dateiübertragung (Host <-> Controller über einen eigenen DataChannel)
+// ---------------------------------------------------------------------------
+
+/**
+ * Steuernachrichten der Dateiübertragung. Sie werden als JSON-Text über den
+ * Datei-DataChannel gesendet; die eigentlichen Dateistücke folgen als
+ * Binärnachrichten (ArrayBuffer) zwischen "file-begin" und "file-end".
+ * Da ein DataChannel standardmäßig geordnet zustellt, gehört jedes Binärstück
+ * eindeutig zur zuletzt angekündigten Übertragung.
+ */
+export type FileTransferControl =
+  | {
+      type: "file-begin";
+      /** Eindeutige ID der Übertragung (vom Absender vergeben). */
+      id: string;
+      name: string;
+      /** Größe in Bytes — für Fortschrittsanzeige und Vollständigkeitsprüfung. */
+      size: number;
+      /** MIME-Typ, leer wenn unbekannt. */
+      mime: string;
+    }
+  | { type: "file-end"; id: string }
+  | { type: "file-abort"; id: string; reason: string };
+
+// ---------------------------------------------------------------------------
 // Electron IPC (Main <-> Renderer)
 // ---------------------------------------------------------------------------
 
@@ -191,3 +216,10 @@ export const IPC_CHANNELS = {
 } as const;
 
 export const DATA_CHANNEL_LABEL = "myremote-input";
+
+/**
+ * Eigener DataChannel für Dateiübertragungen. Bewusst getrennt vom
+ * Eingabe-Kanal: Große Dateistücke würden dort sonst Maus-/Tastatur-Events
+ * verzögern.
+ */
+export const FILE_CHANNEL_LABEL = "myremote-files";

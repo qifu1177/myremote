@@ -76,7 +76,6 @@ export interface Translations {
     chat: string;
     fullscreen: string;
     exitFullscreen: string;
-    featureNotAvailable: string;
     connectionInfo: (resolution: string, latencyMs: number) => string;
   };
   connectPage: {
@@ -94,6 +93,20 @@ export interface Translations {
     waitingForPeer: string;
     /** Titel des Chat-Buttons auf der Host-Karte, inkl. Anzahl ungelesener Nachrichten. */
     unread: (count: number) => string;
+    open: string;
+    close: string;
+  };
+  /** Dateiübertragung zwischen Host und Controller. */
+  fileTransfer: {
+    title: string;
+    empty: string;
+    dropHint: string;
+    choose: string;
+    save: string;
+    sent: string;
+    progress: (percent: number) => string;
+    failed: (reason: string) => string;
+    waitingForPeer: string;
     open: string;
     close: string;
   };
