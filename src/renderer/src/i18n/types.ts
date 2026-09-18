@@ -31,6 +31,8 @@ export interface Translations {
     confirmIncomingConnection: string;
     /** Statt der Passwort-Punkte, wenn ohne Passwort freigegeben wird. */
     noPasswordNeeded: string;
+    /** Die Verbindung zum Signaling-Server ist abgerissen (Wiederanmeldung läuft). */
+    signalingLost: string;
   };
   connectCard: {
     title: string;
@@ -165,6 +167,9 @@ export interface Translations {
     securityTitle: string;
     randomPasswordOnStart: string;
     randomPasswordOnStartHint: string;
+    /** Feste Host-ID über Neustarts hinweg behalten. */
+    keepHostId: string;
+    keepHostIdHint: string;
     confirmEachConnection: string;
     confirmEachConnectionHint: string;
     shareWithoutPassword: string;

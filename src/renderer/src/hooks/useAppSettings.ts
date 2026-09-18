@@ -15,6 +15,12 @@ export interface AppSettings {
      * Standard: aus — ohne Passwort kann jeder mitschauen, der die ID kennt.
      */
     shareWithoutPassword: boolean;
+    /**
+     * Die eigene Host-ID über App-Neustarts hinweg behalten (Standard: aus).
+     * Ohne diese Option würfelt der Main-Prozess bei jedem Start eine neue ID,
+     * die Gegenstelle müsste sie jedes Mal neu eintippen.
+     */
+    keepHostId: boolean;
   };
   display: {
     quality: StreamQuality;
@@ -34,6 +40,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     randomPasswordOnStart: true,
     confirmEachConnection: true,
     shareWithoutPassword: false,
+    keepHostId: false,
   },
   display: {
     quality: "balanced",

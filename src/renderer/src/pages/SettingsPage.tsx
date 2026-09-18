@@ -109,6 +109,17 @@ export function SettingsPage({
               </div>
               <div className="switch-row">
                 <div>
+                  <div className="switch-row-label">{t.settingsPage.keepHostId}</div>
+                  <div className="switch-row-hint">{t.settingsPage.keepHostIdHint}</div>
+                </div>
+                <Switch
+                  checked={settings.security.keepHostId}
+                  onChange={(next) => onUpdateSecurity({ keepHostId: next })}
+                  label={t.settingsPage.keepHostId}
+                />
+              </div>
+              <div className="switch-row">
+                <div>
                   <div className="switch-row-label">{t.settingsPage.confirmEachConnection}</div>
                   <div className="switch-row-hint">{t.settingsPage.confirmEachConnectionHint}</div>
                 </div>

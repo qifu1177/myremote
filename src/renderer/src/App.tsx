@@ -35,6 +35,13 @@ export default function App(): JSX.Element {
     }
   }, [appInfo?.platform]);
 
+  // Die Einstellung liegt im Renderer (localStorage), die Host-ID entsteht aber
+  // im Main-Prozess. Deshalb den Zustand bei jedem Start und jeder Änderung an
+  // den Main-Prozess durchreichen (siehe main/host-identity.ts).
+  useEffect(() => {
+    window.myremote.setKeepHostId(settings.security.keepHostId);
+  }, [settings.security.keepHostId]);
+
   if (activeRemote) {
     return (
       <RemoteView

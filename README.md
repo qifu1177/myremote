@@ -20,6 +20,7 @@ myremote/
 │   ├── main/                # Electron Main-Prozess
 │   │   ├── index.ts          # App-Bootstrap, IPC-Handler, Fenster
 │   │   ├── id.ts              # Generierung von Host-ID + Passwort
+│   │   ├── host-identity.ts   # Feste Host-ID über Neustarts hinweg
 │   │   └── input-simulation.ts# Maus-/Tastatursimulation via nut-js
 │   ├── mobile-client/          # Mobile-Web-Client (Vite, Browser)
 │   │   └── src/
@@ -423,6 +424,15 @@ Passwort, Annahme bei richtigem Passwort) automatisiert prüft:
 npm run signaling &            # Server im Hintergrund starten
 node scripts/test-signaling.mjs
 ```
+
+## Feste Host-ID
+
+Standardmäßig erzeugt die App bei jedem Start eine neue Host-ID. Unter
+**Einstellungen → Sicherheit → „Feste ID behalten“** wird die aktuelle ID
+dauerhaft gespeichert (`host-identity.json` im User-Data-Ordner der App) und
+nach einem Neustart wiederverwendet — die Gegenstelle muss sie also nur einmal
+eintippen. Wird die Option wieder ausgeschaltet, löscht die App die
+gespeicherte ID und würfelt beim nächsten Start erneut eine neue.
 
 ## Host-ID/Passwort-Generierung testen
 

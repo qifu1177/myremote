@@ -35,6 +35,14 @@ const metrics = require("./metrics");
 
 const DEFAULT_PORT = 8787;
 
+/**
+ * Takt des WebSocket-Heartbeats. Ohne ihn bleibt ein halb offener Socket
+ * (Gerät im Standby, WLAN-Wechsel, Router-Timeout) unbemerkt in der Registry
+ * stehen bzw. wird erst nach Minuten vom Betriebssystem abgeräumt — der Host
+ * gilt dann als erreichbar, obwohl ihn niemand mehr erreicht.
+ */
+const HEARTBEAT_INTERVAL_MS = 15000;
+
 /** Port aus der Umgebung (CLI-Standardverhalten), sonst 8787. */
 function configuredPort() {
   return process.env.PORT ? Number(process.env.PORT) : DEFAULT_PORT;
@@ -80,6 +88,12 @@ function createSignalingServer(options = {}) {
     /** Diese Verbindung gehört entweder zu einem Host oder zu einer Controller-Session. */
     const state = { role: null, hostId: null, sessionId: null };
 
+    // Heartbeat: Jede Antwort ("pong") markiert den Socket als lebendig.
+    ws.isAlive = true;
+    ws.on("pong", () => {
+      ws.isAlive = true;
+    });
+
     metrics.onConnectionOpened();
     ws.once("close", () => metrics.onConnectionClosed());
 
@@ -102,9 +116,32 @@ function createSignalingServer(options = {}) {
             send(ws, { type: "register-failed", reason: "missing-id-or-password" });
             return;
           }
-          if (hosts.has(hostId)) {
-            send(ws, { type: "register-failed", reason: "id-already-registered" });
-            return;
+          // Ein bestehender Eintrag ist nach einem unbemerkten Verbindungs-
+          // abriss (Idle-Timeout, WLAN-Wechsel, Standby) meist nur noch eine
+          // Karteileiche: Der Host meldet sich mit derselben ID neu an, während
+          // der alte Socket serverseitig noch als offen gilt (halb offene TCP-
+          // Verbindung meldet weiterhin readyState OPEN). Früher wurde die
+          // Neuanmeldung mit "id-already-registered" abgelehnt — der Host blieb
+          // dauerhaft unerreichbar ("host-not-found"), obwohl er lief.
+          //
+          // Deshalb gewinnt jetzt die JÜNGSTE Registrierung. Bewusste Abwägung:
+          // Die alte Prüfung bot ohnehin keinen echten Schutz (die ID ist über
+          // den QR-Code/die UI bekannt, ein Angreifer im selben Netz konnte sie
+          // vor dem Host registrieren). Zum tatsächlichen Verbinden ist weiter
+          // das Passwort nötig.
+          const existing = hosts.get(hostId);
+          if (existing && existing.ws !== ws) {
+            // Die Controller der alten Registrierung hängen an einem toten
+            // Socket. Sie werden abgemeldet, damit sie sich neu verbinden.
+            for (const controllerWs of existing.controllers.values()) {
+              send(controllerWs, { type: "error", message: "host-disconnected" });
+            }
+            try {
+              existing.ws.terminate();
+            } catch {
+              /* bereits tot */
+            }
+            log(`[signaling] host re-registered, alte Registrierung ersetzt: ${hostId}`);
           }
           hosts.set(hostId, {
             ws,
@@ -208,7 +245,11 @@ function createSignalingServer(options = {}) {
     function cleanup() {
       if (state.role === "host" && state.hostId) {
         const host = hosts.get(state.hostId);
-        if (host) {
+        // Nur aufräumen, wenn der Eintrag noch zu DIESEM Socket gehört: Hat
+        // sich der Host inzwischen neu registriert (siehe "register-host"),
+        // gehört die ID bereits der neuen Verbindung und darf nicht durch das
+        // späte close-Event der alten gelöscht werden.
+        if (host && host.ws === ws) {
           for (const controllerWs of host.controllers.values()) {
             send(controllerWs, { type: "error", message: "host-disconnected" });
           }
@@ -226,6 +267,41 @@ function createSignalingServer(options = {}) {
       refreshSessionCounts();
     }
   });
+
+  /** Läuft nur zwischen listen() und close(). */
+  let heartbeatTimer = null;
+
+  /**
+   * Fragt reihum jeden Socket an. Wer bis zur nächsten Runde nicht mit "pong"
+   * geantwortet hat, gilt als tot und wird terminiert — das löst regulär
+   * cleanup() aus und entfernt den Host aus der Registry, statt ihn als
+   * Karteileiche stehen zu lassen.
+   */
+  function startHeartbeat() {
+    if (heartbeatTimer) return;
+    heartbeatTimer = setInterval(() => {
+      for (const ws of wss.clients) {
+        if (ws.isAlive === false) {
+          ws.terminate();
+          continue;
+        }
+        ws.isAlive = false;
+        try {
+          ws.ping();
+        } catch {
+          /* Socket bereits im Abbau */
+        }
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+    // Der Timer darf den Node-Prozess nicht am Beenden hindern.
+    heartbeatTimer.unref?.();
+  }
+
+  function stopHeartbeat() {
+    if (!heartbeatTimer) return;
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
 
   /** Der tatsächlich gebundene Port (0, solange nicht gelauscht wird). */
   function boundPort() {
@@ -252,6 +328,7 @@ function createSignalingServer(options = {}) {
       const done = () => {
         httpServer.off("error", onError);
         wss.off("error", onError);
+        startHeartbeat();
         resolve(boundPort());
       };
       if (host === undefined) httpServer.listen(port, done);
@@ -262,6 +339,7 @@ function createSignalingServer(options = {}) {
   /** Schließt alle offenen WebSockets und den HTTP-Server. */
   function close() {
     return new Promise((resolve) => {
+      stopHeartbeat();
       for (const client of wss.clients) {
         try {
           client.terminate();

@@ -12,6 +12,7 @@ import {
 import { join } from "path";
 import { is } from "./is";
 import { generateHostId, generateHostPassword } from "./id";
+import { createFileHostIdentityStore, createHostIdentity } from "./host-identity";
 import { applyRemoteInputEvent, setInputDisplayId } from "./input-simulation";
 import { detectLanAddress } from "./lan-address";
 import { createStayAwake } from "./stay-awake";
@@ -37,10 +38,18 @@ import {
 // lautet, setzen wir ihn hier zusätzlich hart.
 app.setName("mydesk");
 
-// Für die gesamte App-Laufzeit feste Host-Zugangsdaten (bei jedem Start neu generiert).
+// Für die gesamte App-Laufzeit feste Host-Zugangsdaten.
+// Die Host-ID wird normalerweise bei jedem Start neu erzeugt; ist die
+// Einstellung "Feste ID behalten" aktiv, liefert host-identity.ts die zuletzt
+// gespeicherte ID (Datei in app.getPath("userData"), daher erst NACH
+// app.setName() ermitteln, sonst zeigt der Pfad auf einen anderen Ordner).
 // hostPassword ist bewusst "let": Über den "Aktualisieren"-Button im Host-Karten-UI
 // (Passwort neu generieren) kann der Renderer per IPC ein neues Passwort anfordern.
-const hostId = generateHostId();
+const hostIdentity = createHostIdentity(
+  createFileHostIdentityStore(join(app.getPath("userData"), "host-identity.json")),
+  generateHostId,
+);
+const hostId = hostIdentity.id;
 let hostPassword = generateHostPassword();
 
 let mainWindow: BrowserWindow | null = null;
@@ -220,6 +229,10 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.regenerateHostPassword, (): string => {
     hostPassword = generateHostPassword();
     return hostPassword;
+  });
+
+  ipcMain.on(IPC_CHANNELS.setKeepHostId, (_event, keep: boolean) => {
+    hostIdentity.setKeep(keep);
   });
 
   ipcMain.on(IPC_CHANNELS.setStayAwake, (_event, active: boolean) => {

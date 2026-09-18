@@ -184,6 +184,11 @@ export function HostCard({ appInfo, signalingUrl, securitySettings, displaySetti
       onFileReceived: (file) => fileCallbacksRef.current.onFileReceived(file),
       onFileAborted: (id, reason) => fileCallbacksRef.current.onFileAborted(id, reason),
       onError: (msg) => setError(msg),
+      // Ohne diese Rückmeldung stand die Freigabe scheinbar weiter, während
+      // der Host beim Signaling-Server längst abgemeldet war — ein neuer
+      // Browser-Versuch lief dann ins Leere ("host-not-found").
+      onSignalingClosed: () => setError(t.hostCard.signalingLost),
+      onSignalingRestored: () => setError(null),
       confirmIncomingConnection: () =>
         Promise.resolve(
           !securitySettingsRef.current.confirmEachConnection || window.confirm(t.hostCard.confirmIncomingConnection),

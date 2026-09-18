@@ -1,22 +1,29 @@
 import type { ClientToServerMessage, ServerToClientMessage } from "@shared/types";
 
 type Listener = (msg: ServerToClientMessage) => void;
+type CloseListener = () => void;
 
 /**
  * Dünner Wrapper um die WebSocket-Verbindung zum Signaling-Server.
- * Reconnect wird für dieses MVP bewusst nicht implementiert (siehe README,
- * Abschnitt "Bekannte Einschränkungen") — bei Verbindungsabbruch muss der
- * Nutzer die Verbindung erneut aufbauen.
+ *
+ * Der Wrapper verbindet nicht von selbst neu, meldet einen Abriss aber über
+ * `onClose` nach oben (siehe HostSession): Ein unbemerkt gestorbener Socket
+ * hatte den Host sonst dauerhaft unerreichbar gemacht, weil der Signaling-
+ * Server ihn aus seiner Registry entfernt, die App davon aber nichts erfuhr.
  */
 export class SignalingClient {
   private ws: WebSocket | null = null;
   private listeners = new Set<Listener>();
+  private closeListeners = new Set<CloseListener>();
   private openPromise: Promise<void> | null = null;
+  /** Unterscheidet einen gewollten close() von einem Abriss. */
+  private closedByUs = false;
 
   constructor(private url: string) {}
 
   connect(): Promise<void> {
     if (this.openPromise) return this.openPromise;
+    this.closedByUs = false;
     this.openPromise = new Promise((resolve, reject) => {
       const ws = new WebSocket(this.url);
       this.ws = ws;
@@ -32,6 +39,9 @@ export class SignalingClient {
       };
       ws.onclose = () => {
         this.openPromise = null;
+        // Ein selbst ausgelöstes close() ist kein Fehlerfall und darf keine
+        // Wiederanmeldung anstoßen.
+        if (!this.closedByUs) this.closeListeners.forEach((l) => l());
       };
     });
     return this.openPromise;
@@ -42,11 +52,18 @@ export class SignalingClient {
     return () => this.listeners.delete(listener);
   }
 
+  /** Meldet einen ungewollten Verbindungsabriss (nicht: eigenes close()). */
+  onClose(listener: CloseListener): () => void {
+    this.closeListeners.add(listener);
+    return () => this.closeListeners.delete(listener);
+  }
+
   send(msg: ClientToServerMessage): void {
     this.ws?.send(JSON.stringify(msg));
   }
 
   close(): void {
+    this.closedByUs = true;
     this.ws?.close();
     this.ws = null;
     this.openPromise = null;

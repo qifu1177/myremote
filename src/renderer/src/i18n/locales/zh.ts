@@ -30,6 +30,7 @@ export const zh: Translations = {
     hint: "任何拥有此 ID 和密码的人都可以连接到此设备。",
     confirmIncomingConnection: "有一个控制端想要连接。是否允许此连接？",
     noPasswordNeeded: "无需密码",
+    signalingLost: "与信令服务器的连接已断开 — 正在重新注册…",
   },
   connectCard: {
     title: "建立连接",
@@ -160,6 +161,8 @@ export const zh: Translations = {
     securityTitle: "安全",
     randomPasswordOnStart: "每次启动时使用随机密码",
     randomPasswordOnStartHint: "打开时自动生成新密码。",
+    keepHostId: "保持固定 ID",
+    keepHostIdHint: "重启后本机 ID 保持不变。关闭时每次启动都会生成新的 ID。",
     confirmEachConnection: "每次连接均需确认",
     confirmEachConnectionHint: "连接必须手动确认。",
     shareWithoutPassword: "无密码共享",

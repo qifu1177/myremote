@@ -30,6 +30,7 @@ export const en: Translations = {
     hint: "Anyone with this ID and password can connect to this device.",
     confirmIncomingConnection: "A controller wants to connect. Allow this connection?",
     noPasswordNeeded: "No password required",
+    signalingLost: "Lost connection to the signaling server — trying to register again…",
   },
   connectCard: {
     title: "Establish connection",
@@ -163,6 +164,9 @@ export const en: Translations = {
     securityTitle: "Security",
     randomPasswordOnStart: "Random password on every start",
     randomPasswordOnStartHint: "Automatically generates a new password when opening the app.",
+    keepHostId: "Keep a fixed ID",
+    keepHostIdHint:
+      "Your own ID stays the same after a restart. When off, a new ID is generated on every start.",
     confirmEachConnection: "Confirmation for every connection",
     confirmEachConnectionHint: "Connections must be confirmed manually.",
     shareWithoutPassword: "Share without password",

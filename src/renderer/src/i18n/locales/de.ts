@@ -30,6 +30,7 @@ export const de: Translations = {
     hint: "Jeder mit dieser ID und diesem Passwort kann sich mit diesem Gerät verbinden.",
     confirmIncomingConnection: "Ein Controller möchte sich verbinden. Verbindung zulassen?",
     noPasswordNeeded: "Kein Passwort nötig",
+    signalingLost: "Verbindung zum Signaling-Server verloren — neuer Anmeldeversuch läuft…",
   },
   connectCard: {
     title: "Verbindung herstellen",
@@ -163,6 +164,9 @@ export const de: Translations = {
     securityTitle: "Sicherheit",
     randomPasswordOnStart: "Zufälliges Passwort bei jedem Start",
     randomPasswordOnStartHint: "Erzeugt beim Öffnen automatisch ein neues Passwort.",
+    keepHostId: "Feste ID behalten",
+    keepHostIdHint:
+      "Die eigene ID bleibt nach einem Neustart gleich. Ist die Option aus, wird bei jedem Start eine neue ID erzeugt.",
     confirmEachConnection: "Zustimmung bei jeder Verbindung",
     confirmEachConnectionHint: "Verbindungen müssen manuell bestätigt werden.",
     shareWithoutPassword: "Ohne Passwort freigeben",

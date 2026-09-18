@@ -213,6 +213,8 @@ export const IPC_CHANNELS = {
   getPermissions: "permissions:get",
   openPrivacySettings: "permissions:open-settings",
   regenerateHostPassword: "app:regenerate-host-password",
+  /** Feste Host-ID über Neustarts hinweg behalten (siehe main/host-identity.ts). */
+  setKeepHostId: "app:set-keep-host-id",
   /** Hält den Rechner während der Freigabe wach (siehe main/stay-awake.ts). */
   setStayAwake: "power:set-stay-awake",
 } as const;

@@ -28,6 +28,13 @@ export interface HostSessionCallbacks {
   onFileAborted?: (id: string, reason: string, sessionId: string) => void;
   onError?: (message: string) => void;
   /**
+   * Die Signaling-Verbindung ist ungewollt abgerissen. Der Host ist damit für
+   * neue Controller nicht mehr auffindbar, bis die Wiederanmeldung greift.
+   */
+  onSignalingClosed?: () => void;
+  /** Die Wiederanmeldung nach einem Abriss war erfolgreich. */
+  onSignalingRestored?: () => void;
+  /**
    * Wird für jede eingehende Verbindung aufgerufen, bevor der WebRTC-Handshake
    * beginnt (Settings → Sicherheit → "Zustimmung bei jeder Verbindung"). Löst
    * `true` auf, wenn die Verbindung angenommen werden soll. Ohne diesen
@@ -57,6 +64,14 @@ export class HostSession {
    */
   private chatPeers = new Set<string>();
   private stream: MediaStream | null = null;
+  /** Nach stop() wird nicht mehr neu verbunden. */
+  private stopped = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Wartezeit bis zum nächsten Versuch; wächst bis RECONNECT_MAX_DELAY_MS. */
+  private reconnectDelayMs = HostSession.RECONNECT_BASE_DELAY_MS;
+
+  private static readonly RECONNECT_BASE_DELAY_MS = 1000;
+  private static readonly RECONNECT_MAX_DELAY_MS = 15000;
 
   constructor(
     private signalingUrl: string,
@@ -74,9 +89,59 @@ export class HostSession {
    */
   async start(stream: MediaStream | null = null): Promise<void> {
     this.stream = stream;
+    this.stopped = false;
     await this.signaling.connect();
     this.signaling.onMessage((msg) => this.handleMessage(msg));
+    this.signaling.onClose(() => this.handleSignalingClosed());
     this.signaling.send({ type: "register-host", id: this.hostId, password: this.password });
+  }
+
+  /**
+   * Reißt die Signaling-Verbindung ab (Standby, WLAN-Wechsel, Neustart des
+   * Servers), ist der Host beim Signaling-Server nicht mehr registriert — ein
+   * Controller bekäme "host-not-found". Deshalb wird selbstständig neu
+   * verbunden und registriert, bis es klappt oder stop() gerufen wird.
+   */
+  private handleSignalingClosed(): void {
+    if (this.stopped) return;
+    // Die bestehenden Peer-Verbindungen hängen an der alten Registrierung.
+    for (const sessionId of [...this.chatPeers]) {
+      this.peers.get(sessionId)?.close();
+      this.peers.delete(sessionId);
+      this.channels.delete(sessionId);
+      this.fileChannels.delete(sessionId);
+      this.updateChatPeer(sessionId, false);
+      this.callbacks.onPeerDisconnected?.(sessionId);
+    }
+    this.callbacks.onSignalingClosed?.();
+    this.scheduleReconnect();
+  }
+
+  private scheduleReconnect(): void {
+    if (this.stopped || this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.reconnect();
+    }, this.reconnectDelayMs);
+  }
+
+  private async reconnect(): Promise<void> {
+    if (this.stopped) return;
+    try {
+      // Frischer Client: Der alte hält einen geschlossenen Socket.
+      this.signaling = new SignalingClient(this.signalingUrl);
+      await this.signaling.connect();
+      this.signaling.onMessage((msg) => this.handleMessage(msg));
+      this.signaling.onClose(() => this.handleSignalingClosed());
+      this.signaling.send({ type: "register-host", id: this.hostId, password: this.password });
+      this.reconnectDelayMs = HostSession.RECONNECT_BASE_DELAY_MS;
+      this.callbacks.onSignalingRestored?.();
+    } catch {
+      // Server noch nicht erreichbar: später erneut versuchen, mit wachsendem
+      // Abstand, damit ein dauerhaft toter Server die App nicht ausbremst.
+      this.reconnectDelayMs = Math.min(this.reconnectDelayMs * 2, HostSession.RECONNECT_MAX_DELAY_MS);
+      this.scheduleReconnect();
+    }
   }
 
   /** true, wenn aktuell ein Bildschirm freigegeben wird. */
@@ -171,6 +236,13 @@ export class HostSession {
   }
 
   stop(): void {
+    // Vor dem Schließen setzen: Sonst löst das eigene close() die
+    // Wiederanmeldung aus und der Host bliebe registriert.
+    this.stopped = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.stopStream();
     this.chatPeers.clear();
     this.callbacks.onChatPeersChanged?.(0);
